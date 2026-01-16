@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Asset {
+  id             String    @id @default(uuid())
+  name           String
+  type           String    // CRYPTO, STOCK, MUTUAL_FUND, GOLD, SILVER, CASH
+  symbol         String?   // e.g. "bitcoin", "120503"
+  platform       String?   @default("Unknown") // e.g. "Binance", "Zerodha", "Bank"
+  quantity       Float?    @default(0)
+  investedAmount Float?    @default(0)
+  manualPrice    Float?    // For STOCK, GOLD, SILVER if not fetching live
+  transactions   AssetTransaction[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model AssetTransaction {
+  id             String   @id @default(uuid())
+  assetId        String
+  asset          Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  type           String   // BUY, SELL
+  quantity       Float
+  pricePerUnit   Float
+  fees           Float    @default(0)
+  notes          String?
+  realizedProfit Float?   // Profit/Loss for SELL transactions
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+model AlertRule {
+  id               String   @id @default(uuid())
+  type             String   // PRICE, ALLOCATION
+  enabled          Boolean  @default(true)
+  assetId          String?  // For PRICE alerts
+  assetType        String?  // For ALLOCATION alerts
+  direction        String   // ABOVE, BELOW
+  thresholdValue   Float?   // For PRICE alerts
+  thresholdPercent Float?   // For ALLOCATION alerts
+  events           AlertEvent[]
+  createdAt        DateTime @default(now())
+}
+
+model AlertEvent {
+  id          String   @id @default(uuid())
+  ruleId      String
+  rule        AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  triggeredAt DateTime @default(now())
+  message     String
+  isRead      Boolean  @default(false)
+}
+
+model PriceCache {
+  id             String   @id @default(uuid())
+  key            String   @unique // type:symbol
+  type           String   // CRYPTO, STOCK, MUTUAL_FUND, GOLD, SILVER, CASH
+  symbol         String
+  priceInInr     Float
+  prevPriceInInr Float?
+  updatedAt      DateTime @updatedAt
+}
+
+model PortfolioSnapshot {
+  id             String   @id @default(uuid())
+  date           String   @unique // YYYY-MM-DD
+  netWorthInr    Float
+  investedInr    Float
+  profitLossInr  Float
+  createdAt      DateTime @default(now())
+}

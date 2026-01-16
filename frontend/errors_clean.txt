@@ -1,0 +1,2 @@
+src/components/MFSearch.tsx(4,1): error TS6133: 'clsx' is declared but its value is never read.
+src/pages/Assets.tsx(4,50): error TS6133: 'DollarSign' is declared but its value is never read.

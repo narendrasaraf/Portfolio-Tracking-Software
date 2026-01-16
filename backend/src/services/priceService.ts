@@ -1,0 +1,184 @@
+import axios from 'axios';
+import { prisma } from '../utils/db';
+import { fetchYahooStockQuotes } from './stockService';
+
+// In-memory cache with 5-minute TTL
+interface CacheItem<T> {
+    data: T;
+    updatedAt: number;
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const STOCK_CACHE_TTL = 60 * 1000; // 1 minute for stocks
+let usdtInrCache: CacheItem<number> | null = null;
+let cryptoPricesCache: Record<string, CacheItem<number>> = {};
+let stockPricesCache: Record<string, CacheItem<number>> = {};
+
+const fetchUsdtInrRate = async (): Promise<number> => {
+    try {
+        // Binance doesn't have a direct USDTINR global spot pair.
+        // Using a reliable free forex API for USD-INR as a proxy (usually ~99.9% same as USDT-INR)
+        const res = await axios.get('https://api.exchangerate-api.com/v4/latest/USD');
+        if (res.data && res.data.rates && res.data.rates.INR) {
+            const rate = parseFloat(res.data.rates.INR);
+            console.log(`[DEBUG] Fetched live USD-INR rate: ${rate}`);
+            usdtInrCache = { data: rate, updatedAt: Date.now() };
+            // Persist to DB cache
+            await prisma.priceCache.upsert({
+                where: { key: 'METADATA:USDT_INR' },
+                update: { priceInInr: rate },
+                create: { key: 'METADATA:USDT_INR', type: 'METADATA', symbol: 'USDT_INR', priceInInr: rate }
+            });
+            return rate;
+        }
+    } catch (e) {
+        console.error("[ERROR] Failed to fetch USD-INR rate", e);
+    }
+
+    // Fallback to last known in DB or hardcoded
+    const lastDb = await prisma.priceCache.findUnique({ where: { key: 'METADATA:USDT_INR' } });
+    const fallback = lastDb?.priceInInr || usdtInrCache?.data || 83.5;
+    console.log(`[DEBUG] Using fallback USDT-INR rate: ${fallback}`);
+    return fallback;
+};
+
+const fetchAllCryptoTickers = async (): Promise<Record<string, number>> => {
+    const prices: Record<string, number> = {};
+    try {
+        const res = await axios.get('https://api.binance.com/api/v3/ticker/price');
+        if (Array.isArray(res.data)) {
+            res.data.forEach((item: any) => {
+                prices[item.symbol] = parseFloat(item.price);
+            });
+        }
+    } catch (e) {
+        console.error("[ERROR] Failed to fetch bulk tickers from Binance", e);
+    }
+    return prices;
+};
+
+export const refreshPrices = async (force: boolean = false) => {
+    const now = Date.now();
+    console.log(`[DEBUG] Refreshing prices (force=${force}) at ${new Date(now).toISOString()}`);
+
+    // 0. Pre-fetch existing cache for shifting
+    const existingCache = await prisma.priceCache.findMany();
+    const cacheMap = new Map(existingCache.map(c => [c.key, c]));
+
+    // 1. Get/Refresh USDT-INR Rate
+    let usdtInrRate: number;
+    if (!force && usdtInrCache && (now - usdtInrCache.updatedAt < CACHE_TTL)) {
+        usdtInrRate = usdtInrCache.data;
+        console.log(`[DEBUG] Using cached usdtInrRate: ${usdtInrRate}`);
+    } else {
+        usdtInrRate = await fetchUsdtInrRate();
+    }
+
+    // 2. Identify required assets
+    const assets = await prisma.asset.findMany({
+        where: { type: { in: ['CRYPTO', 'MUTUAL_FUND', 'STOCK'] } }
+    });
+
+    const cryptoSymbols = new Set<string>();
+    const mfSchemes = new Set<string>();
+    const stockSymbols = new Set<string>();
+
+    assets.forEach(a => {
+        if (a.type === 'CRYPTO' && a.symbol) cryptoSymbols.add(a.symbol.toUpperCase());
+        if (a.type === 'MUTUAL_FUND' && a.symbol) mfSchemes.add(a.symbol);
+        if (a.type === 'STOCK' && a.symbol) stockSymbols.add(a.symbol);
+    });
+
+    // 3. Refresh Crypto Prices (Binance)
+    if (cryptoSymbols.size > 0) {
+        const tickers = await fetchAllCryptoTickers();
+        const apiFailed = Object.keys(tickers).length === 0;
+
+        for (const symbol of cryptoSymbols) {
+            const pair = `${symbol}USDT`;
+            let priceInUsdt = tickers[pair];
+
+            if (priceInUsdt !== undefined) {
+                cryptoPricesCache[symbol] = { data: priceInUsdt, updatedAt: now };
+            } else if (!force && cryptoPricesCache[symbol] && (now - cryptoPricesCache[symbol].updatedAt < CACHE_TTL)) {
+                priceInUsdt = cryptoPricesCache[symbol].data;
+            } else if (apiFailed && cryptoPricesCache[symbol]) {
+                priceInUsdt = cryptoPricesCache[symbol].data; // Failsafe
+            }
+
+            if (priceInUsdt !== undefined) {
+                const priceInInr = priceInUsdt * usdtInrRate;
+                const key = `CRYPTO:${symbol}`;
+                const existing = cacheMap.get(key);
+                console.log(`[DEBUG] Crypto ${symbol}: $${priceInUsdt} * ${usdtInrRate} = ₹${priceInInr}`);
+                await (prisma as any).priceCache.upsert({
+                    where: { key },
+                    update: { priceInInr, prevPriceInInr: existing?.priceInInr },
+                    create: { key, type: 'CRYPTO', symbol, priceInInr }
+                });
+            } else {
+                console.warn(`[WARN] Could not find price for CRYPTO:${symbol}`);
+            }
+        }
+    }
+
+    // 4. Refresh Stock Prices (Yahoo Finance)
+    if (stockSymbols.size > 0) {
+        const symbolsArray = Array.from(stockSymbols);
+        const stockQuotes = await fetchYahooStockQuotes(symbolsArray);
+
+        for (const symbol of symbolsArray) {
+            let priceInInr = stockQuotes.get(symbol);
+
+            if (priceInInr !== undefined) {
+                stockPricesCache[symbol] = { data: priceInInr, updatedAt: now };
+            } else if (!force && stockPricesCache[symbol] && (now - stockPricesCache[symbol].updatedAt < STOCK_CACHE_TTL)) {
+                priceInInr = stockPricesCache[symbol].data;
+            } else if (stockPricesCache[symbol]) {
+                priceInInr = stockPricesCache[symbol].data; // Failsafe
+            }
+
+            if (priceInInr !== undefined) {
+                const key = `STOCK:${symbol}`;
+                const existing = cacheMap.get(key);
+                console.log(`[DEBUG] Stock ${symbol}: ₹${priceInInr}`);
+                await (prisma as any).priceCache.upsert({
+                    where: { key },
+                    update: { priceInInr, prevPriceInInr: existing?.priceInInr },
+                    create: { key, type: 'STOCK', symbol, priceInInr }
+                });
+            } else {
+                console.warn(`[WARN] Could not find price for STOCK:${symbol}`);
+            }
+        }
+    }
+
+    // 5. Refresh Mutual Fund Prices
+    for (const scheme of mfSchemes) {
+        try {
+            const res = await axios.get(`https://api.mfapi.in/mf/${scheme}`);
+            if (res.data && res.data.data && res.data.data[0]) {
+                const nav = parseFloat(res.data.data[0].nav);
+                const key = `MUTUAL_FUND:${scheme}`;
+                const existing = cacheMap.get(key);
+                console.log(`[DEBUG] MF ${scheme}: NAV ₹${nav}`);
+                await (prisma as any).priceCache.upsert({
+                    where: { key },
+                    update: { priceInInr: nav, prevPriceInInr: existing?.priceInInr },
+                    create: { key, type: 'MUTUAL_FUND', symbol: scheme, priceInInr: nav }
+                });
+            }
+        } catch (e) {
+            console.error(`[ERROR] Failed to fetch MF price for ${scheme}`, e);
+        }
+    }
+};
+
+export const getPriceCache = async () => {
+    const cache = await prisma.priceCache.findMany();
+    const priceMap: Record<string, { current: number, prev: number | null }> = {};
+    cache.forEach(c => {
+        priceMap[c.key] = { current: c.priceInInr, prev: (c as any).prevPriceInInr };
+    });
+    return priceMap;
+};

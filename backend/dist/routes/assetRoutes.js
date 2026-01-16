@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const assetController_1 = require("../controllers/assetController");
+const router = (0, express_1.Router)();
+router.get('/', assetController_1.getAssets);
+router.get('/transactions', assetController_1.getTransactions);
+router.post('/', assetController_1.addAsset);
+router.put('/:id', assetController_1.updateAsset);
+router.post('/:id/sell', assetController_1.sellAsset);
+router.delete('/:id', assetController_1.deleteAsset);
+router.post('/prices/refresh', assetController_1.manualRefresh);
+exports.default = router;
