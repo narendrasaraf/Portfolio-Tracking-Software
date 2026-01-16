@@ -4,7 +4,7 @@ A simple, password-protected personal finance portfolio tracker with **embedded 
 
 ## 🔐 Single-User App
 
-- **Password**: `Narendra16@`
+- **Password**: #To be update later#
 - No user registration required
 - Session-based access
 
