@@ -22,11 +22,11 @@ const Layout = () => {
     ];
 
     return (
-        <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+        <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 transition-colors font-sans antialiased">
             {/* Top Bar */}
-            <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-4 py-3 flex justify-between items-center shadow-sm z-10 transition-colors">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Portfolio Tracker
+            <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b dark:border-gray-800 px-4 py-3 flex justify-between items-center shadow-sm transition-all duration-300">
+                <h1 className="text-xl font-extrabold bg-gradient-to-r from-blue-700 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent tracking-tight">
+                    Narendra’s Portfolio
                 </h1>
 
                 {/* Desktop Navigation */}
@@ -39,24 +39,24 @@ const Layout = () => {
                                 key={item.path}
                                 to={item.path}
                                 className={clsx(
-                                    "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors font-medium",
+                                    "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 font-medium text-sm",
                                     isActive
-                                        ? "bg-blue-600 text-white"
-                                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                                        : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100"
                                 )}
                             >
-                                <Icon size={18} />
+                                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                                 <span>{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     {/* Currency Toggle */}
                     <button
                         onClick={toggleCurrency}
-                        className="px-3 py-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1"
+                        className="px-3 py-1.5 text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center gap-1 border border-transparent dark:border-gray-700"
                         title="Change Currency"
                     >
                         <span className={clsx(currency === 'INR' ? "text-blue-600 dark:text-blue-400" : "opacity-40 text-gray-400")}>₹</span>
@@ -67,7 +67,7 @@ const Layout = () => {
                     {/* Theme Toggle */}
                     <button
                         onClick={toggleTheme}
-                        className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
                         title={isDark ? "Switch to light mode" : "Switch to dark mode"}
                     >
                         {isDark ? <Sun size={20} /> : <Moon size={20} />}
@@ -76,7 +76,7 @@ const Layout = () => {
                     {/* Logout */}
                     <button
                         onClick={logout}
-                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
                         title="Logout"
                     >
                         <LogOut size={20} />
