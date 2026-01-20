@@ -18,4 +18,5 @@ export const assetSchema = z.object({
     quantity: z.number().positive(),
     investedAmount: z.number().positive(),
     manualPrice: z.number().optional(),
+    manualCurrentValue: z.number().optional(),
 });

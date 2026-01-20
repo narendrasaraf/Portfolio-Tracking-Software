@@ -12,6 +12,7 @@ type FormValues = {
     quantity: number;
     investedAmount: number;
     manualPrice?: number;
+    manualCurrentValue?: number;
     platform: string;
 };
 
@@ -42,7 +43,8 @@ const AddAsset = () => {
                 symbol: formattedSymbol,
                 quantity: Number(data.quantity),
                 investedAmount: Number(data.investedAmount),
-                manualPrice: data.manualPrice ? Number(data.manualPrice) : undefined
+                manualPrice: data.manualPrice ? Number(data.manualPrice) : undefined,
+                manualCurrentValue: data.manualCurrentValue ? Number(data.manualCurrentValue) : undefined
             });
             navigate('/assets');
         } catch (error) {
@@ -116,19 +118,34 @@ const AddAsset = () => {
                     </datalist>
                 </div>
 
-                {selectedType && !['CASH', 'MUTUAL_FUND', 'GOLD', 'SILVER'].includes(selectedType) && (
+                {selectedType === 'CRYPTO' && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {selectedType === 'CRYPTO' ? 'Binance Symbol (e.g. BTC)' : 'Yahoo Symbol (e.g. RELIANCE)'}
+                            Binance Symbol (e.g. BTC)
                         </label>
                         <input
                             {...register('symbol')}
-                            placeholder={selectedType === 'CRYPTO' ? "BTC" : "RELIANCE"}
+                            placeholder="BTC"
                             className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-400 mt-1">
-                            {selectedType === 'CRYPTO' && "Enter Binance base symbol (BTC, ETH, SOL, USDT). App maps to BTCUSDT etc."}
-                            {selectedType === 'STOCK' && "Just enter the name, we'll auto-add .NS for NSE stocks."}
+                            Enter Binance base symbol (BTC, ETH, SOL, USDT). App maps to BTCUSDT etc.
+                        </p>
+                    </div>
+                )}
+
+                {selectedType === 'STOCK' && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Yahoo Symbol (e.g. RELIANCE)
+                        </label>
+                        <input
+                            {...register('symbol')}
+                            placeholder="RELIANCE"
+                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                            Just enter the name, we'll auto-add .NS for NSE stocks.
                         </p>
                     </div>
                 )}
@@ -146,13 +163,20 @@ const AddAsset = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity</label>
-                        <input
-                            type="number" step="any"
-                            {...register('quantity', { required: true })}
-                            disabled={selectedType === 'CASH'}
-                            className={`w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedType === 'CASH' ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-700'}`}
-                        />
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Quantity{['GOLD', 'SILVER'].includes(selectedType) ? ' (grams)' : ''}
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="number" step="any"
+                                {...register('quantity', { required: true })}
+                                disabled={selectedType === 'CASH'}
+                                className={`w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedType === 'CASH' ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-700'} ${['GOLD', 'SILVER'].includes(selectedType) ? 'pr-8' : ''}`}
+                            />
+                            {['GOLD', 'SILVER'].includes(selectedType) && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">g</span>
+                            )}
+                        </div>
                         {selectedType === 'CASH' && <p className="text-xs text-blue-500 mt-1">Cash value uses Invested Amount directly.</p>}
                     </div>
                     <div>
@@ -166,14 +190,29 @@ const AddAsset = () => {
                 </div>
 
                 {['STOCK', 'GOLD', 'SILVER'].includes(selectedType) && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Current Price (₹)</label>
-                        <input
-                            type="number" step="any"
-                            {...register('manualPrice')}
-                            placeholder="Optional: Enter current price"
-                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Price Per Unit (₹)</label>
+                            <input
+                                type="number" step="any"
+                                {...register('manualPrice')}
+                                placeholder="Optional: Enter price per unit"
+                                className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+
+                        {['GOLD', 'SILVER'].includes(selectedType) && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Total Current Value (₹)</label>
+                                <input
+                                    type="number" step="any"
+                                    {...register('manualCurrentValue')}
+                                    placeholder="Optional: enter current total value"
+                                    className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">If filled, app will use this as current value for profit/loss</p>
+                            </div>
+                        )}
                     </div>
                 )}
 

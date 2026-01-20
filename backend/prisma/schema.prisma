@@ -16,6 +16,7 @@ model Asset {
   quantity       Float?    @default(0)
   investedAmount Float?    @default(0)
   manualPrice    Float?    // For STOCK, GOLD, SILVER if not fetching live
+  manualCurrentValue Float? // For GOLD, SILVER manual value override
   transactions   AssetTransaction[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

@@ -22,6 +22,7 @@ export interface Asset {
     dailyChangePercent?: number;
 
     manualPrice?: number;
+    manualCurrentValue?: number; // For GOLD/SILVER manual value override
     currentPrice?: number;
     profit?: number; // kept for compatibility
     updatedAt: string;

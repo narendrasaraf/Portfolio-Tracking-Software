@@ -16,7 +16,10 @@ export const getAssets = async (req: Request, res: Response) => {
 
         // Calculate current values based on transactions
         const data = assets.map(asset => {
-            const priceKey = `${asset.type}:${asset.symbol}`;
+            let priceKey = `${asset.type}:${asset.symbol}`;
+            if (asset.type === 'GOLD' || asset.type === 'SILVER') {
+                priceKey = `${asset.type}:LIVE`;
+            }
             const priceInfo = prices[priceKey];
             let currentPrice = asset.manualPrice || 0;
             let prevPrice = null;
@@ -29,6 +32,21 @@ export const getAssets = async (req: Request, res: Response) => {
             }
 
             const performance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+
+            // Override valuation for GOLD/SILVER if manualCurrentValue is set
+            if ((asset.type === 'GOLD' || asset.type === 'SILVER') && (asset as any).manualCurrentValue) {
+                const manualVal = (asset as any).manualCurrentValue;
+                performance.currentValue = manualVal;
+                performance.unrealizedPnl = manualVal - performance.totalInvested;
+                performance.totalPnl = performance.realizedPnl + performance.unrealizedPnl;
+                // For derived price per gram display (if needed):
+                currentPrice = performance.holdingQuantity > 0 ? manualVal / performance.holdingQuantity : 0;
+            } else if ((asset.type === 'GOLD' || asset.type === 'SILVER') && !priceInfo && asset.manualPrice) {
+                // Fallback for Gold/Silver without live price but with manual price per unit
+                currentPrice = asset.manualPrice;
+                const perfWithManual = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+                Object.assign(performance, perfWithManual);
+            }
 
             // Calculate daily change
             let dailyChangeInr = 0;
@@ -67,7 +85,10 @@ export const getAssetById = async (req: Request, res: Response) => {
         if (!asset) return res.status(404).json({ error: "Asset not found" });
 
         const prices = await getPriceCache();
-        const priceKey = `${asset.type}:${asset.symbol}`;
+        let priceKey = `${asset.type}:${asset.symbol}`;
+        if (asset.type === 'GOLD' || asset.type === 'SILVER') {
+            priceKey = `${asset.type}:LIVE`;
+        }
         const priceInfo = prices[priceKey];
         let currentPrice = asset.manualPrice || 0;
         let prevPrice = null;
@@ -80,6 +101,22 @@ export const getAssetById = async (req: Request, res: Response) => {
         }
 
         const performance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+
+        // Override valuation for GOLD/SILVER if manualCurrentValue is set
+        if ((asset.type === 'GOLD' || asset.type === 'SILVER') && (asset as any).manualCurrentValue) {
+            const manualVal = (asset as any).manualCurrentValue;
+            performance.currentValue = manualVal;
+            performance.unrealizedPnl = manualVal - performance.totalInvested;
+            performance.totalPnl = performance.realizedPnl + performance.unrealizedPnl;
+            // For derived price per gram display (if needed):
+            currentPrice = performance.holdingQuantity > 0 ? manualVal / performance.holdingQuantity : 0;
+        } else if ((asset.type === 'GOLD' || asset.type === 'SILVER') && !priceInfo && asset.manualPrice) {
+            // Fallback for Gold/Silver without live price but with manual price per unit
+            currentPrice = asset.manualPrice;
+            // Re-calculate performance with manual price if not already done via passed currentPrice
+            const perfWithManual = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+            Object.assign(performance, perfWithManual);
+        }
 
         res.json({
             ...asset,
@@ -144,6 +181,7 @@ export const updateAsset = async (req: Request, res: Response) => {
                 symbol: validated.symbol,
                 platform: (validated as any).platform,
                 manualPrice: validated.manualPrice,
+                manualCurrentValue: validated.manualCurrentValue,
                 type: validated.type
             } as any
         });

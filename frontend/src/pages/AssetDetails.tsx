@@ -36,7 +36,7 @@ const AssetDetails = () => {
     if (!asset) return <div className="p-4 dark:text-gray-300">Asset not found</div>;
 
     const stats = [
-        { label: 'Holding Qty', value: asset.holdingQuantity?.toFixed(4) || '0', icon: <Tag size={16} /> },
+        { label: `Holding Qty${['GOLD', 'SILVER'].includes(asset.type) ? ' (grams)' : ''}`, value: asset.holdingQuantity?.toFixed(4) || '0', icon: <Tag size={16} /> },
         { label: 'Avg Buy Price', value: formatValue(asset.avgBuyPrice || 0), icon: <Info size={16} /> },
         { label: 'Current Price', value: formatValue(asset.currentPrice || 0), icon: <Clock size={16} /> },
     ];
@@ -64,6 +64,11 @@ const AssetDetails = () => {
                             {asset.type.replace('_', ' ')}
                         </span>
                         {asset.symbol && <span className="text-xs text-gray-400 font-mono">{asset.symbol}</span>}
+                        {(asset as any).manualCurrentValue && (
+                            <span className="text-[10px] font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-800/30">
+                                Current value: Manual
+                            </span>
+                        )}
                     </div>
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{asset.name}</h2>
                 </div>

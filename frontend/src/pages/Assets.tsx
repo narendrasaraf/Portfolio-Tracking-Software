@@ -101,6 +101,11 @@ const Assets = () => {
                             <span className="text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-800/30">
                                 {asset.platform || 'Unknown'}
                             </span>
+                            {(asset as any).manualCurrentValue && (
+                                <span className="text-[10px] font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800/30">
+                                    Manual
+                                </span>
+                            )}
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors tracking-tight">{asset.name}</h3>
                         {asset.symbol && <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">{asset.symbol}</p>}
@@ -140,7 +145,7 @@ const Assets = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-xs font-medium text-gray-400 dark:text-gray-500 pt-1 px-1">
-                    <span>Qty: <span className="text-gray-600 dark:text-gray-300">{asset.holdingQuantity?.toFixed(4) || asset.quantity}</span></span>
+                    <span>Qty: <span className="text-gray-600 dark:text-gray-300">{asset.holdingQuantity?.toFixed(4) || asset.quantity}{['GOLD', 'SILVER'].includes(asset.type) ? 'g' : ''}</span></span>
                     <span>Inv: <span className="text-gray-600 dark:text-gray-300">{formatValue(asset.totalInvested || asset.investedAmount || 0)}</span></span>
                 </div>
             </div>
