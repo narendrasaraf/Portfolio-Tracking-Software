@@ -16,13 +16,14 @@ let stockPricesCache: Record<string, CacheItem<number>> = {};
 
 const fetchUsdtInrRate = async (): Promise<number> => {
     try {
-        // Binance doesn't have a direct USDTINR global spot pair.
-        // Using a reliable free forex API for USD-INR as a proxy (usually ~99.9% same as USDT-INR)
-        const res = await axios.get('https://api.exchangerate-api.com/v4/latest/USD');
-        if (res.data && res.data.rates && res.data.rates.INR) {
-            const rate = parseFloat(res.data.rates.INR);
-            console.log(`[DEBUG] Fetched live USD-INR rate: ${rate}`);
+        // Use Binance USDT/INR if available, or fallback to other reliable sources is the strategy.
+        // As per requirement: ALWAYS fetch USDTINR from Binance.
+        const res = await axios.get('https://api.binance.com/api/v3/ticker/price?symbol=USDTINR');
+        if (res.data && res.data.price) {
+            const rate = parseFloat(res.data.price);
+            console.log(`[DEBUG] Fetched live USDT-INR rate from Binance: ${rate}`);
             usdtInrCache = { data: rate, updatedAt: Date.now() };
+
             // Persist to DB cache
             await prisma.priceCache.upsert({
                 where: { key: 'METADATA:USDT_INR' },
@@ -32,12 +33,12 @@ const fetchUsdtInrRate = async (): Promise<number> => {
             return rate;
         }
     } catch (e) {
-        console.error("[ERROR] Failed to fetch USD-INR rate", e);
+        console.error("[ERROR] Failed to fetch USDT-INR rate from Binance", e);
     }
 
     // Fallback to last known in DB or hardcoded
     const lastDb = await prisma.priceCache.findUnique({ where: { key: 'METADATA:USDT_INR' } });
-    const fallback = lastDb?.priceInInr || usdtInrCache?.data || 83.5;
+    const fallback = lastDb?.priceInInr || usdtInrCache?.data || 87.0; // Updated fallback
     console.log(`[DEBUG] Using fallback USDT-INR rate: ${fallback}`);
     return fallback;
 };
@@ -95,8 +96,15 @@ export const refreshPrices = async (force: boolean = false) => {
         const apiFailed = Object.keys(tickers).length === 0;
 
         for (const symbol of cryptoSymbols) {
-            const pair = `${symbol}USDT`;
-            let priceInUsdt = tickers[pair];
+            let priceInUsdt: number | undefined;
+
+            if (symbol === 'USDT') {
+                // FIXED: USDT base price is always 1
+                priceInUsdt = 1;
+            } else {
+                const pair = `${symbol}USDT`;
+                priceInUsdt = tickers[pair];
+            }
 
             if (priceInUsdt !== undefined) {
                 cryptoPricesCache[symbol] = { data: priceInUsdt, updatedAt: now };

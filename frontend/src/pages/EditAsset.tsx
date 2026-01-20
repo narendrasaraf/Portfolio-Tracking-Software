@@ -48,6 +48,12 @@ const EditAsset = () => {
 
     const selectedType = watch('type');
 
+    useEffect(() => {
+        if (selectedType === 'CASH') {
+            setValue('quantity', 1);
+        }
+    }, [selectedType, setValue]);
+
     const onSubmit = async (data: FormValues) => {
         setLoading(true);
         try {
@@ -141,7 +147,7 @@ const EditAsset = () => {
                     </datalist>
                 </div>
 
-                {selectedType && selectedType !== 'CASH' && selectedType !== 'MUTUAL_FUND' && (
+                {selectedType && !['CASH', 'MUTUAL_FUND', 'GOLD', 'SILVER'].includes(selectedType) && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             {selectedType === 'CRYPTO' ? 'Binance Symbol (e.g. BTC)' : 'Yahoo Symbol (e.g. RELIANCE)'}
@@ -151,8 +157,9 @@ const EditAsset = () => {
                             placeholder={selectedType === 'CRYPTO' ? "BTC" : "RELIANCE"}
                             className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <p className="text-xs text-gray-400 mt-1 uppercase">
-                            {selectedType === 'STOCK' && "Auto-appends .NS for NSE stocks."}
+                        <p className="text-xs text-gray-400 mt-1">
+                            {selectedType === 'CRYPTO' && "Enter Binance base symbol (BTC, ETH, SOL, USDT). App maps to BTCUSDT etc."}
+                            {selectedType === 'STOCK' && "Just enter the name, we'll auto-add .NS for NSE stocks."}
                         </p>
                     </div>
                 )}
@@ -174,8 +181,10 @@ const EditAsset = () => {
                         <input
                             type="number" step="any"
                             {...register('quantity', { required: true })}
-                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            disabled={selectedType === 'CASH'}
+                            className={`w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedType === 'CASH' ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-700'}`}
                         />
+                        {selectedType === 'CASH' && <p className="text-xs text-blue-500 mt-1">Cash value uses Invested Amount directly.</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invested Amount (₹)</label>

@@ -52,8 +52,15 @@ export const calculateAssetPerformance = (
 
     const holdingQuantity = totalBuyQty - totalSellQty;
     const currentHoldingInvested = holdingQuantity * avgBuyPrice;
-    const currentValue = holdingQuantity * currentPrice;
-    const unrealizedPnl = currentValue - currentHoldingInvested;
+
+    // FIX: For CASH assets, value is exactly what is invested. Price/Quantity logic is bypassed.
+    let currentValue = holdingQuantity * currentPrice;
+    let unrealizedPnl = currentValue - currentHoldingInvested;
+
+    if (asset.type === 'CASH') {
+        currentValue = currentHoldingInvested;
+        unrealizedPnl = 0;
+    }
 
     return {
         holdingQuantity,
