@@ -6,7 +6,7 @@ const ExportBackupButton: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleExport = (format: 'json' | 'csv') => {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
         const url = `${apiUrl}/backup/export?format=${format}`;
         window.open(url, '_blank');
         setIsOpen(false);

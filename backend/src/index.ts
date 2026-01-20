@@ -7,6 +7,7 @@ import transactionRoutes from './routes/transactionRoutes';
 import portfolioRoutes from './routes/portfolioRoutes';
 import backupRoutes from './routes/backupRoutes';
 import alertRoutes from './routes/alertRoutes';
+import authRoutes from './routes/authRoutes';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/portfolio', portfolioRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/health', (req, res) => {
     res.send('OK');
