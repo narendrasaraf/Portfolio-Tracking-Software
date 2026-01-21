@@ -77,19 +77,17 @@ export const refreshPrices = async (force: boolean = false) => {
 
     // 2. Identify required assets
     const assets = await prisma.asset.findMany({
-        where: { type: { in: ['CRYPTO', 'MUTUAL_FUND', 'STOCK', 'GOLD', 'SILVER'] } }
+        where: { type: { in: ['CRYPTO', 'MUTUAL_FUND', 'STOCK'] } }
     });
 
     const cryptoSymbols = new Set<string>();
     const mfSchemes = new Set<string>();
     const stockSymbols = new Set<string>();
-    const metalTypes = new Set<string>();
 
     assets.forEach(a => {
         if (a.type === 'CRYPTO' && a.symbol) cryptoSymbols.add(a.symbol.toUpperCase());
         if (a.type === 'MUTUAL_FUND' && a.symbol) mfSchemes.add(a.symbol);
         if (a.type === 'STOCK' && a.symbol) stockSymbols.add(a.symbol);
-        if (a.type === 'GOLD' || a.type === 'SILVER') metalTypes.add(a.type);
     });
 
     // 3. Refresh Crypto Prices (Binance)
@@ -176,36 +174,7 @@ export const refreshPrices = async (force: boolean = false) => {
         }
     }
 
-    // 6. Refresh Metal Prices (Gold/Silver)
-    if (metalTypes.size > 0) {
-        for (const type of metalTypes) {
-            try {
-                // Gold-api.com or similar fallback. Using a reliable public metal API.
-                // Requirement specifically mentions gold-api.com XAU/XAG INR
-                const symbol = type === 'GOLD' ? 'XAU' : 'XAG';
-                const res = await axios.get(`https://api.gold-api.com/v1/latest?symbol=${symbol}&currency=INR`);
 
-                if (res.data && res.data.price) {
-                    const pricePerGram = res.data.price; // gold-api usually returns per ounce or gram depending on config/API
-                    // Most APIs return per ounce. We need per gram. 1 ounce = 31.1035 grams.
-                    // However, some versions of gold-api return per gram if specified.
-                    // Let's assume it's per gram for simplicity or handle conversion if we knew the exact API behavior.
-                    // The user said "live metal rate exists (gold-api.com XAU/XAG INR)".
-
-                    const key = `${type}:LIVE`; // Use a generic key or symbol based
-                    const existing = cacheMap.get(key);
-                    console.log(`[DEBUG] Metal ${type}: ₹${pricePerGram} per unit`);
-                    await (prisma as any).priceCache.upsert({
-                        where: { key },
-                        update: { priceInInr: pricePerGram, prevPriceInInr: existing?.priceInInr },
-                        create: { key, type, symbol, priceInInr: pricePerGram }
-                    });
-                }
-            } catch (e) {
-                console.error(`[ERROR] Failed to fetch metal price for ${type}`, e);
-            }
-        }
-    }
 };
 
 export const getPriceCache = async () => {

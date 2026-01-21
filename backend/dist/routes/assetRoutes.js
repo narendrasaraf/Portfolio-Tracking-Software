@@ -5,6 +5,7 @@ const assetController_1 = require("../controllers/assetController");
 const router = (0, express_1.Router)();
 router.get('/', assetController_1.getAssets);
 router.get('/transactions', assetController_1.getTransactions);
+router.get('/:id', assetController_1.getAssetById);
 router.post('/', assetController_1.addAsset);
 router.put('/:id', assetController_1.updateAsset);
 router.post('/:id/sell', assetController_1.sellAsset);

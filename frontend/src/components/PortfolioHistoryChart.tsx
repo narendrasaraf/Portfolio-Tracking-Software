@@ -8,7 +8,8 @@ import {
     Tooltip,
     ResponsiveContainer,
     Area,
-    AreaChart
+    AreaChart,
+    Legend
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { useCurrency } from '../context/CurrencyContext';
@@ -98,6 +99,10 @@ const PortfolioHistoryChart: React.FC = () => {
                                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
                                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                 </linearGradient>
+                                <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" className="dark:stroke-gray-700/50" />
                             <XAxis
@@ -118,8 +123,21 @@ const PortfolioHistoryChart: React.FC = () => {
                                 hide={window.innerWidth < 640}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#3b82f6', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                            <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }} />
                             <Area
-                                type="monotone"
+                                type="linear"
+                                dataKey="investedInr"
+                                stroke="#8b5cf6"
+                                strokeWidth={2}
+                                strokeDasharray="5 5"
+                                fillOpacity={1}
+                                fill="url(#colorInvested)"
+                                animationDuration={1500}
+                                connectNulls
+                                name="Invested"
+                            />
+                            <Area
+                                type="linear"
                                 dataKey="netWorthInr"
                                 stroke="#3b82f6"
                                 strokeWidth={3}
@@ -127,6 +145,7 @@ const PortfolioHistoryChart: React.FC = () => {
                                 fill="url(#colorNetWorth)"
                                 animationDuration={1500}
                                 connectNulls
+                                name="Net Worth"
                             />
                         </AreaChart>
                     </ResponsiveContainer>

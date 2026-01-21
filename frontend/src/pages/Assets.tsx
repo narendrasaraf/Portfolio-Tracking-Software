@@ -101,7 +101,7 @@ const Assets = () => {
                             <span className="text-[10px] font-bold tracking-wider text-blue-600 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full border border-blue-100 dark:border-blue-800/30">
                                 {asset.platform || 'Unknown'}
                             </span>
-                            {(asset as any).manualCurrentValue && (
+                            {((asset as any).manualCurrentValue || asset.type === 'GOLD' || asset.type === 'SILVER') && (
                                 <span className="text-[10px] font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full border border-amber-100 dark:border-amber-800/30">
                                     Manual
                                 </span>

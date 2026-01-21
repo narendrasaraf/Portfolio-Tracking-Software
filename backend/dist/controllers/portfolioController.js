@@ -1,63 +1,64 @@
-import { Request, Response } from 'express';
-import { prisma } from '../utils/db';
-import { getPriceCache } from '../services/priceService';
-import { calculateAssetPerformance } from '../services/transactionService';
-
-export const syncMissingSnapshots = async () => {
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getDailyChange = exports.getHistory = exports.createDailySnapshot = exports.syncMissingSnapshots = void 0;
+const db_1 = require("../utils/db");
+const priceService_1 = require("../services/priceService");
+const transactionService_1 = require("../services/transactionService");
+const syncMissingSnapshots = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const firstTx = await prisma.assetTransaction.findFirst({
+        const firstTx = yield db_1.prisma.assetTransaction.findFirst({
             orderBy: { date: 'asc' }
         });
-        if (!firstTx) return;
-
+        if (!firstTx)
+            return;
         let currentDate = new Date(firstTx.date);
         currentDate.setHours(0, 0, 0, 0);
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
-        const assets = await prisma.asset.findMany({
+        const assets = yield db_1.prisma.asset.findMany({
             include: { transactions: true }
         });
-        const prices = await getPriceCache();
-
+        const prices = yield (0, priceService_1.getPriceCache)();
         console.log(`[HISTORY] Starting backfill from ${currentDate.toISOString().split('T')[0]} to today.`);
-
         while (currentDate <= today) {
             const dateStr = currentDate.toISOString().split('T')[0];
             let totalNetWorth = 0;
             let totalInvested = 0;
-
             assets.forEach(asset => {
                 const txUpToDate = asset.transactions.filter(tx => {
                     const txDate = new Date(tx.date);
                     txDate.setHours(0, 0, 0, 0);
                     return txDate <= currentDate;
                 });
-
-                if (txUpToDate.length === 0) return;
-
+                if (txUpToDate.length === 0)
+                    return;
                 const priceKey = `${asset.type}:${asset.symbol}`;
                 let currentPrice = asset.manualPrice || 0;
-
                 const priceInfo = prices[priceKey];
                 if (priceInfo) {
                     currentPrice = priceInfo.current;
-                } else if (asset.type === 'CASH') {
+                }
+                else if (asset.type === 'CASH') {
                     currentPrice = 1;
                 }
-
                 // Handle Silver manual price (per KG -> per Gram)
                 if (asset.type === 'SILVER' && asset.manualPrice) {
                     currentPrice = asset.manualPrice / 1000;
                 }
-
-                const performance = calculateAssetPerformance(asset, txUpToDate, currentPrice);
+                const performance = (0, transactionService_1.calculateAssetPerformance)(asset, txUpToDate, currentPrice);
                 totalNetWorth += performance.currentValue;
                 totalInvested += performance.totalInvested;
             });
-
-            await prisma.portfolioSnapshot.upsert({
+            yield db_1.prisma.portfolioSnapshot.upsert({
                 where: { date: dateStr },
                 update: {
                     netWorthInr: totalNetWorth,
@@ -74,50 +75,43 @@ export const syncMissingSnapshots = async () => {
             currentDate.setDate(currentDate.getDate() + 1);
         }
         console.log(`[HISTORY] Backfill complete.`);
-    } catch (error) {
+    }
+    catch (error) {
         console.error('[HISTORY] Error backfilling snapshots:', error);
     }
-};
-
-export const createDailySnapshot = async () => {
+});
+exports.syncMissingSnapshots = syncMissingSnapshots;
+const createDailySnapshot = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const today = new Date().toISOString().split('T')[0];
-
         // First, ensure all past days have snapshots
-        await syncMissingSnapshots();
-
-        const assets = await prisma.asset.findMany({
+        yield (0, exports.syncMissingSnapshots)();
+        const assets = yield db_1.prisma.asset.findMany({
             include: { transactions: true }
         });
-        const prices = await getPriceCache();
-
+        const prices = yield (0, priceService_1.getPriceCache)();
         let totalNetWorth = 0;
         let totalInvested = 0;
-
         assets.forEach(asset => {
             const priceKey = `${asset.type}:${asset.symbol}`;
             let currentPrice = asset.manualPrice || 0;
-
             const priceInfo = prices[priceKey];
             if (priceInfo) {
                 currentPrice = priceInfo.current;
-            } else if (asset.type === 'CASH') {
+            }
+            else if (asset.type === 'CASH') {
                 currentPrice = 1;
             }
-
             // Handle Silver manual price (per KG -> per Gram)
             if (asset.type === 'SILVER' && asset.manualPrice) {
                 currentPrice = asset.manualPrice / 1000;
             }
-
-            const performance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+            const performance = (0, transactionService_1.calculateAssetPerformance)(asset, asset.transactions, currentPrice);
             totalNetWorth += performance.currentValue;
             totalInvested += performance.totalInvested;
         });
-
         const profitLoss = totalNetWorth - totalInvested;
-
-        await prisma.portfolioSnapshot.upsert({
+        yield db_1.prisma.portfolioSnapshot.upsert({
             where: { date: today },
             update: {
                 netWorthInr: totalNetWorth,
@@ -131,108 +125,103 @@ export const createDailySnapshot = async () => {
                 profitLossInr: profitLoss
             }
         });
-
         console.log(`[SNAPSHOT] Updated daily snapshot for ${today}. Net Worth: ₹${totalNetWorth.toFixed(2)}`);
-    } catch (error) {
+    }
+    catch (error) {
         console.error('[SNAPSHOT] Error creating daily snapshot:', error);
     }
-};
-
-export const getHistory = async (req: Request, res: Response) => {
+});
+exports.createDailySnapshot = createDailySnapshot;
+const getHistory = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { range } = req.query;
     try {
         let dateFilter = {};
         const now = new Date();
-
         if (range === '7D') {
             const last7Days = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0];
             dateFilter = { gte: last7Days };
-        } else if (range === '1M') {
+        }
+        else if (range === '1M') {
             const last30Days = new Date(now.setDate(now.getDate() - 30)).toISOString().split('T')[0];
             dateFilter = { gte: last30Days };
-        } else if (range === '3M') {
+        }
+        else if (range === '3M') {
             const last90Days = new Date(now.setDate(now.getDate() - 90)).toISOString().split('T')[0];
             dateFilter = { gte: last90Days };
-        } else if (range === '1Y') {
+        }
+        else if (range === '1Y') {
             const lastYear = new Date(now.setFullYear(now.getFullYear() - 1)).toISOString().split('T')[0];
             dateFilter = { gte: lastYear };
         }
-
-        const snapshots = await prisma.portfolioSnapshot.findMany({
+        const snapshots = yield db_1.prisma.portfolioSnapshot.findMany({
             where: {
                 date: dateFilter
             },
             orderBy: { date: 'asc' }
         });
-
         res.json({
             range,
             points: snapshots
         });
-    } catch (error: any) {
+    }
+    catch (error) {
         res.status(500).json({ error: error.message });
     }
-};
-
-export const getDailyChange = async (req: Request, res: Response) => {
+});
+exports.getHistory = getHistory;
+const getDailyChange = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const today = new Date().toISOString().split('T')[0];
-
         // Get yesterday's snapshot
         const yesterdayDate = new Date();
         yesterdayDate.setDate(yesterdayDate.getDate() - 1);
         const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-
-        const [yesterdaySnapshot, todaySnapshot] = await Promise.all([
-            prisma.portfolioSnapshot.findFirst({
+        const [yesterdaySnapshot, todaySnapshot] = yield Promise.all([
+            db_1.prisma.portfolioSnapshot.findFirst({
                 where: { date: { lt: today } },
                 orderBy: { date: 'desc' }
             }),
-            prisma.portfolioSnapshot.findUnique({ where: { date: today } })
+            db_1.prisma.portfolioSnapshot.findUnique({ where: { date: today } })
         ]);
-
-        let netWorthTodayInr = todaySnapshot?.netWorthInr || 0;
-        const netWorthYesterdayInr = yesterdaySnapshot?.netWorthInr || null;
-
+        let netWorthTodayInr = (todaySnapshot === null || todaySnapshot === void 0 ? void 0 : todaySnapshot.netWorthInr) || 0;
+        const netWorthYesterdayInr = (yesterdaySnapshot === null || yesterdaySnapshot === void 0 ? void 0 : yesterdaySnapshot.netWorthInr) || null;
         // If today's snapshot is missing, try to calculate it on the fly
         if (netWorthTodayInr === 0) {
-            const assets = await prisma.asset.findMany({
+            const assets = yield db_1.prisma.asset.findMany({
                 include: { transactions: true }
             });
-            const prices = await getPriceCache();
-
+            const prices = yield (0, priceService_1.getPriceCache)();
             assets.forEach(asset => {
                 const priceKey = `${asset.type}:${asset.symbol}`;
                 let currentPrice = asset.manualPrice || 0;
                 const priceInfo = prices[priceKey];
                 if (priceInfo) {
                     currentPrice = priceInfo.current;
-                } else if (asset.type === 'CASH') {
+                }
+                else if (asset.type === 'CASH') {
                     currentPrice = 1;
                 }
-
-                const performance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+                const performance = (0, transactionService_1.calculateAssetPerformance)(asset, asset.transactions, currentPrice);
                 netWorthTodayInr += performance.currentValue;
             });
         }
-
         let dailyChangeInr = null;
         let dailyChangePercent = null;
-
         if (netWorthYesterdayInr && netWorthYesterdayInr > 0 && netWorthTodayInr > 0) {
             dailyChangeInr = netWorthTodayInr - netWorthYesterdayInr;
             dailyChangePercent = (dailyChangeInr / netWorthYesterdayInr) * 100;
         }
-
         res.json({
             today,
-            yesterday: yesterdaySnapshot?.date || yesterdayStr,
+            yesterday: (yesterdaySnapshot === null || yesterdaySnapshot === void 0 ? void 0 : yesterdaySnapshot.date) || yesterdayStr,
             netWorthTodayInr,
             netWorthYesterdayInr,
             dailyChangeInr,
             dailyChangePercent
         });
-    } catch (error: any) {
+    }
+    catch (error) {
         res.status(500).json({ error: error.message });
     }
-};
+});
+exports.getDailyChange = getDailyChange;

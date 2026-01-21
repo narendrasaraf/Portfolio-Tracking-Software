@@ -46,7 +46,7 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 style: 'currency',
                 currency: 'USD',
                 maximumFractionDigits: 2
-            }).format(converted).replace('$', '₮ ');
+            }).format(converted);
         }
     };
 

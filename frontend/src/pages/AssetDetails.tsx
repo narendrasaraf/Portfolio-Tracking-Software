@@ -64,7 +64,7 @@ const AssetDetails = () => {
                             {asset.type.replace('_', ' ')}
                         </span>
                         {asset.symbol && <span className="text-xs text-gray-400 font-mono">{asset.symbol}</span>}
-                        {(asset as any).manualCurrentValue && (
+                        {((asset as any).manualCurrentValue || asset.type === 'GOLD' || asset.type === 'SILVER') && (
                             <span className="text-[10px] font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-md border border-amber-100 dark:border-amber-800/30">
                                 Current value: Manual
                             </span>

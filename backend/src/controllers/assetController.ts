@@ -16,15 +16,14 @@ export const getAssets = async (req: Request, res: Response) => {
 
         // Calculate current values based on transactions
         const data = assets.map(asset => {
-            let priceKey = `${asset.type}:${asset.symbol}`;
-            if (asset.type === 'GOLD' || asset.type === 'SILVER') {
-                priceKey = `${asset.type}:LIVE`;
-            }
+            const isMetal = asset.type === 'GOLD' || asset.type === 'SILVER';
+            const priceKey = isMetal ? `${asset.type}:LIVE` : `${asset.type}:${asset.symbol}`;
+
             const priceInfo = prices[priceKey];
             let currentPrice = asset.manualPrice || 0;
             let prevPrice = null;
 
-            if (priceInfo) {
+            if (priceInfo && !isMetal) {
                 currentPrice = priceInfo.current;
                 prevPrice = priceInfo.prev;
             } else if (asset.type === 'CASH') {
@@ -33,22 +32,19 @@ export const getAssets = async (req: Request, res: Response) => {
 
             const performance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
 
-            // Override valuation for GOLD/SILVER if manualCurrentValue is set
-            if ((asset.type === 'GOLD' || asset.type === 'SILVER') && (asset as any).manualCurrentValue) {
-                const manualVal = (asset as any).manualCurrentValue;
-                performance.currentValue = manualVal;
-                performance.unrealizedPnl = manualVal - performance.totalInvested;
-                performance.totalPnl = performance.realizedPnl + performance.unrealizedPnl;
-                // For derived price per gram display (if needed):
-                currentPrice = performance.holdingQuantity > 0 ? manualVal / performance.holdingQuantity : 0;
-            } else if ((asset.type === 'GOLD' || asset.type === 'SILVER') && !priceInfo && asset.manualPrice) {
-                // Fallback for Gold/Silver without live price but with manual price per unit
-                currentPrice = asset.manualPrice;
-                const perfWithManual = calculateAssetPerformance(asset, asset.transactions, currentPrice);
-                Object.assign(performance, perfWithManual);
+            // Manual valuation adjustment for metals
+            if (isMetal) {
+                if (asset.type === 'SILVER' && asset.manualPrice) {
+                    // Convert Price per KG to Price per Gram
+                    currentPrice = asset.manualPrice / 1000;
+                    const adjustedPerformance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+                    Object.assign(performance, adjustedPerformance);
+                } else if (asset.type === 'GOLD' && asset.manualPrice) {
+                    // Gold is already per gram, performance already uses currentPrice = asset.manualPrice
+                }
             }
 
-            // Calculate daily change
+            // Calculate daily change (only if we have historical price data, not typically for manual metals unless we track history)
             let dailyChangeInr = 0;
             let dailyChangePercent = 0;
             if (prevPrice && prevPrice > 0) {
@@ -85,37 +81,28 @@ export const getAssetById = async (req: Request, res: Response) => {
         if (!asset) return res.status(404).json({ error: "Asset not found" });
 
         const prices = await getPriceCache();
-        let priceKey = `${asset.type}:${asset.symbol}`;
-        if (asset.type === 'GOLD' || asset.type === 'SILVER') {
-            priceKey = `${asset.type}:LIVE`;
-        }
+        const isMetal = asset.type === 'GOLD' || asset.type === 'SILVER';
+        const priceKey = isMetal ? `${asset.type}:LIVE` : `${asset.type}:${asset.symbol}`;
+
         const priceInfo = prices[priceKey];
         let currentPrice = asset.manualPrice || 0;
-        let prevPrice = null;
 
-        if (priceInfo) {
+        if (priceInfo && !isMetal) {
             currentPrice = priceInfo.current;
-            prevPrice = priceInfo.prev;
         } else if (asset.type === 'CASH') {
             currentPrice = 1;
         }
 
         const performance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
 
-        // Override valuation for GOLD/SILVER if manualCurrentValue is set
-        if ((asset.type === 'GOLD' || asset.type === 'SILVER') && (asset as any).manualCurrentValue) {
-            const manualVal = (asset as any).manualCurrentValue;
-            performance.currentValue = manualVal;
-            performance.unrealizedPnl = manualVal - performance.totalInvested;
-            performance.totalPnl = performance.realizedPnl + performance.unrealizedPnl;
-            // For derived price per gram display (if needed):
-            currentPrice = performance.holdingQuantity > 0 ? manualVal / performance.holdingQuantity : 0;
-        } else if ((asset.type === 'GOLD' || asset.type === 'SILVER') && !priceInfo && asset.manualPrice) {
-            // Fallback for Gold/Silver without live price but with manual price per unit
-            currentPrice = asset.manualPrice;
-            // Re-calculate performance with manual price if not already done via passed currentPrice
-            const perfWithManual = calculateAssetPerformance(asset, asset.transactions, currentPrice);
-            Object.assign(performance, perfWithManual);
+        // Manual valuation adjustment for metals
+        if (isMetal) {
+            if (asset.type === 'SILVER' && asset.manualPrice) {
+                // Convert Price per KG to Price per Gram
+                currentPrice = asset.manualPrice / 1000;
+                const adjustedPerformance = calculateAssetPerformance(asset, asset.transactions, currentPrice);
+                Object.assign(performance, adjustedPerformance);
+            }
         }
 
         res.json({
@@ -151,13 +138,13 @@ export const addAsset = async (req: Request, res: Response) => {
                     type: 'BUY',
                     quantity: Number(quantity),
                     pricePerUnit: Number(investedAmount) / Number(quantity),
-                    date: new Date(),
+                    date: validated.date ? new Date(validated.date) : new Date(),
                     notes: 'Initial purchase'
                 }
             });
         }
 
-        refreshPrices().catch(console.error);
+        refreshPrices().then(() => createDailySnapshot()).catch(console.error);
         res.json(asset);
     } catch (error: any) {
         res.status(400).json({ error: error.message });
@@ -186,8 +173,23 @@ export const updateAsset = async (req: Request, res: Response) => {
             } as any
         });
 
-        if (validated.type || validated.symbol) {
-            refreshPrices().catch(console.error);
+        // Update the initial purchase date if provided
+        if ((validated as any).date) {
+            const initialTx = await prisma.assetTransaction.findFirst({
+                where: { assetId: id },
+                orderBy: { date: 'asc' }
+            });
+
+            if (initialTx) {
+                await prisma.assetTransaction.update({
+                    where: { id: initialTx.id },
+                    data: { date: new Date((validated as any).date) }
+                });
+            }
+        }
+
+        if (validated.type || validated.symbol || (validated as any).date) {
+            refreshPrices().then(() => createDailySnapshot()).catch(console.error);
         }
 
         res.json(asset);

@@ -61,7 +61,7 @@ const Layout = () => {
                     >
                         <span className={clsx(currency === 'INR' ? "text-blue-600 dark:text-blue-400" : "opacity-40 text-gray-400")}>₹</span>
                         <span className="text-gray-300 dark:text-gray-600">/</span>
-                        <span className={clsx(currency === 'USDT' ? "text-blue-600 dark:text-blue-400" : "opacity-40 text-gray-400")}>₮</span>
+                        <span className={clsx(currency === 'USDT' ? "text-blue-600 dark:text-blue-400" : "opacity-40 text-gray-400")}>$</span>
                     </button>
 
                     {/* Theme Toggle */}

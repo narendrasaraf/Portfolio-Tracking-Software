@@ -15,6 +15,7 @@ type FormValues = {
     manualPrice?: number;
     manualCurrentValue?: number;
     platform: string;
+    date?: string;
 };
 
 const EditAsset = () => {
@@ -35,6 +36,11 @@ const EditAsset = () => {
 
     useEffect(() => {
         if (asset) {
+            const oldestTx = asset.transactions?.length
+                ? [...asset.transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]
+                : null;
+            const dateStr = oldestTx ? new Date(oldestTx.date).toISOString().split('T')[0] : '';
+
             reset({
                 name: asset.name,
                 type: asset.type as AssetType,
@@ -43,7 +49,8 @@ const EditAsset = () => {
                 investedAmount: asset.investedAmount,
                 manualPrice: asset.manualPrice,
                 manualCurrentValue: asset.manualCurrentValue,
-                platform: asset.platform || 'Unknown'
+                platform: asset.platform || 'Unknown',
+                date: dateStr
             });
         }
     }, [asset, reset]);
@@ -71,7 +78,8 @@ const EditAsset = () => {
                 quantity: Number(data.quantity),
                 investedAmount: Number(data.investedAmount),
                 manualPrice: data.manualPrice ? Number(data.manualPrice) : undefined,
-                manualCurrentValue: data.manualCurrentValue ? Number(data.manualCurrentValue) : undefined
+                manualCurrentValue: data.manualCurrentValue ? Number(data.manualCurrentValue) : undefined,
+                date: data.date
             });
             queryClient.invalidateQueries({ queryKey: ['assets'] });
             navigate('/assets');
@@ -161,7 +169,7 @@ const EditAsset = () => {
                             className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <p className="text-xs text-gray-400 mt-1">
-                            Enter Binance base symbol (BTC, ETH, SOL, USDT). App maps to BTCUSDT etc.
+                            Enter Binance base symbol (BTC, ETH, SOL, USDT). Live prices are fetched automatically.
                         </p>
                     </div>
                 )}
@@ -221,30 +229,42 @@ const EditAsset = () => {
                     </div>
                 </div>
 
-                {['STOCK', 'GOLD', 'SILVER'].includes(selectedType) && (
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Date</label>
+                    <input
+                        type="date"
+                        {...register('date')}
+                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">When did you buy this asset? Updating this will recalculate your portfolio history.</p>
+                </div>
+
+                {(['STOCK', 'GOLD', 'SILVER'].includes(selectedType)) && (
                     <div className="space-y-4">
+                        <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                            <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 mb-1">
+                                {['GOLD', 'SILVER'].includes(selectedType) ? 'Manual Valuation' : 'Price Override'}
+                            </h4>
+                            <p className="text-xs text-amber-700/70 dark:text-amber-500/70">
+                                {selectedType === 'GOLD' && 'Enter the current market price for 1 gram of Gold.'}
+                                {selectedType === 'SILVER' && 'Enter the current market price for 1 KG of Silver.'}
+                                {selectedType === 'STOCK' && 'Optional: Enter a price per unit to override the live Yahoo Finance data.'}
+                            </p>
+                        </div>
+
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Price Per Unit (₹)</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {selectedType === 'GOLD' ? 'Current Price per Gram (₹)' :
+                                    selectedType === 'SILVER' ? 'Current Price per KG (₹)' :
+                                        'Manual Price Per Unit (₹)'}
+                            </label>
                             <input
                                 type="number" step="any"
-                                {...register('manualPrice')}
-                                placeholder="Optional: Enter price per unit"
+                                {...register('manualPrice', { required: ['GOLD', 'SILVER'].includes(selectedType) })}
+                                placeholder={selectedType === 'GOLD' ? "e.g. 7500" : selectedType === 'SILVER' ? "e.g. 85000" : "Optional: Enter price per unit"}
                                 className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
-
-                        {['GOLD', 'SILVER'].includes(selectedType) && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Manual Total Current Value (₹)</label>
-                                <input
-                                    type="number" step="any"
-                                    {...register('manualCurrentValue')}
-                                    placeholder="Optional: enter current total value"
-                                    className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <p className="text-xs text-gray-400 mt-1">If filled, app will use this as current value for profit/loss</p>
-                            </div>
-                        )}
                     </div>
                 )}
 

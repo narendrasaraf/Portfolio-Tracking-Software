@@ -25,6 +25,7 @@ export interface Asset {
     manualCurrentValue?: number; // For GOLD/SILVER manual value override
     currentPrice?: number;
     profit?: number; // kept for compatibility
+    transactions?: Transaction[];
     updatedAt: string;
 }
 
