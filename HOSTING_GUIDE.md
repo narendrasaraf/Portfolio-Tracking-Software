@@ -3,80 +3,68 @@
 This guide explains how to deploy your WealthFlow Portfolio Tracker to the web using **GitHub**, **Vercel** (Frontend), and **Render.com** (Backend + Database).
 
 ## Prerequisites
-1.  **GitHub Account**: You need to push your code to a GitHub repository.
+1.  **GitHub Account**: Your code must be pushed to a GitHub repository.
 2.  **Vercel Account**: For hosting the frontend.
 3.  **Render Account**: For hosting the backend and database.
 
 ---
 
-## Step 1: Database Setup (Important)
-Your current project uses **SQLite** (`dev.db`). This works fine on your local computer but is **bad for cloud hosting** (Render/Vercel) because the file will get deleted every time you redeploy.
+## Step 1: Push Changes to GitHub
+I have already updated the following files to make them "deployment-ready":
+- `backend/prisma/schema.prisma`: Switched to PostgreSQL (required for Render).
+- `backend/package.json`: Added `pg` and automated build scripts.
+- `render.yaml`: A "Blueprint" file that sets up both the API and Database on Render automatically.
+- `frontend/vercel.json`: Handles SPA routing to prevent 404s on page refresh.
 
-**You must switch to PostgreSQL for production.**
-
-### 1.1 Update `backend/prisma/schema.prisma`
-Change the datasource provider to `postgresql`.
-
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-
-### 1.2 Update `backend/.env`
-Replace your local `DATABASE_URL` with a real Postgres connection string (you will get this from Render in Step 2).
-
-### 1.3 Install dependencies
-In `backend`, run:
-```bash
-npm uninstall sqlite3
-npm install pg
-```
+**Action**: Commit and push these changes to your GitHub repository before proceeding.
 
 ---
 
 ## Step 2: Deploy Backend (Render.com)
 
-1.  **Create a New Web Service** on Render.
-2.  Connect your GitHub repository.
-3.  **Root Directory**: `backend`
-4.  **Build Command**: `npm install && npx prisma generate && npx tsc`
-5.  **Start Command**: `node dist/index.js`
-6.  **Environment Variables**:
-    *   `DATABASE_URL`: (Create a Postgres DB on Render/Neon/Supabase and paste the URL here)
-    *   `ADMIN_PASSWORD`: Your chosen admin password.
-    *   `PORT`: `3000` (or `10000`, Render usually sets `PORT` automatically).
+Render will now detect the `render.yaml` file and set everything up for you.
 
-7.  **Auto-Deploy**: Click "Create Web Service". Render will build and deploy your API.
-    *   *Note: On the first run, you might need to run migrations.* You can add `npx prisma migrate deploy` to the build command or run it manually.
-
-8.  **Copy your Backend URL**: e.g., `https://wealthflow-backend.onrender.com`.
+1.  **Login to Render** and go to the **Blueprints** section.
+2.  Click **New Blueprint Instance**.
+3.  Connect your GitHub repository.
+4.  Render will show "WealthFlow Backend" and "WealthFlow Database". Click **Apply**.
+5.  **Wait** for the deployment to finish.
+    -   It will automatically create a PostgreSQL database.
+    -   It will automatically link the `DATABASE_URL`.
+    -   It will run `prisma generate` and `tsc` to build the app.
+6.  **Copy your Backend URL**: Once deployed, go to the "wealthflow-backend" service and copy the URL (e.g., `https://wealthflow-backend-xxxx.onrender.com`).
 
 ---
 
 ## Step 3: Deploy Frontend (Vercel)
 
-1.  **Add New Project** on Vercel.
+1.  **Login to Vercel** and click **Add New** -> **Project**.
 2.  Connect the same GitHub repository.
-3.  **Root Directory**: `frontend`
-    *   *Note: You may need to edit "Root Directory" in the project settings if it asks.*
-4.  **Framework Preset**: Vite (Vercel usually auto-detects this).
-5.  **Build Command**: `vite build` (default).
-6.  **Environment Variables**:
-    *   `VITE_API_URL`: Paste your Render Backend URL + `/api` (e.g., `https://wealthflow-backend.onrender.com/api`).
-    *   **Important**: Do NOT include a trailing slash.
-7.  **Deploy**: Click "Deploy".
+3.  **Configure Project**:
+    -   **Root Directory**: Set this to `frontend` (Very important!).
+    -   **Framework Preset**: Vite (should be auto-detected).
+4.  **Environment Variables**:
+    -   Add a new variable:
+        -   **Key**: `VITE_API_URL`
+        -   **Value**: Paste your Render Backend URL + `/api` (e.g., `https://wealthflow-backend-xxxx.onrender.com/api`).
+        -   *Note: Ensure NO trailing slash.*
+5.  **Deploy**: Click "Deploy".
 
 ---
 
 ## Troubleshooting
 
--   **Backend 404s**: Check if your `VITE_API_URL` is correct. It should usually end in `/api`.
--   **Database Errors**: Ensure you ran `npx prisma migrate deploy` against your production database.
--   **CORS Errors**: In `backend/src/index.ts`, ensure your CORS configuration allows your Vercel domain.
-    ```typescript
-    app.use(cors({
-        origin: ["https://your-vercel-app.vercel.app", "http://localhost:5173"]
-    }));
-    ```
+### Build Failures on Render
+If the build still fails, check the "Logs" in Render:
+-   **Missing Dependencies**: I added `pg` to `package.json`, which is required for Postgres.
+-   **TypeScript Errors**: Ensure your local code builds with `npm run build` in the backend folder.
+-   **Database Connection**: Render Blueprints handle this automatically, but ensure the database is "Available" before the web service tries to start.
+
+### 404 Errors on Refresh
+I have added `frontend/vercel.json` to fix this. If you still see 404s, ensure that Vercel is using the `frontend` folder as the root directory.
+
+### Blank Screen / CORS
+If the app loads but data doesn't appear:
+1.  Check the Browser Console (F12) for errors.
+2.  Ensure `VITE_API_URL` exactly matches your Render URL (including `https://` and `/api`).
+3.  The backend is currently set to allow all origins (`cors()`), so it should work by default.
