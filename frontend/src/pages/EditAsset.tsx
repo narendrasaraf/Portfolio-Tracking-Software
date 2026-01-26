@@ -5,6 +5,8 @@ import { Asset, AssetType } from '../types';
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import MFSearch from '../components/MFSearch';
+import { ChevronLeft, Save, Briefcase, TrendingUp, LayoutGrid, Info } from 'lucide-react';
+import clsx from 'clsx';
 
 type FormValues = {
     name: string;
@@ -28,7 +30,7 @@ const EditAsset = () => {
         queryKey: ['asset', id],
         queryFn: async () => {
             const res = await api.get('/assets');
-            return res.data.assets.find((a: Asset) => a.id === id); // Fix: dashboard returns {assets, metadata}
+            return res.data.assets.find((a: Asset) => a.id === id);
         }
     });
 
@@ -66,7 +68,6 @@ const EditAsset = () => {
     const onSubmit = async (data: FormValues) => {
         setLoading(true);
         try {
-            // Auto-format symbol
             let formattedSymbol = data.symbol?.trim().toUpperCase() || '';
             if (data.type === 'STOCK' && formattedSymbol && !formattedSymbol.includes('.')) {
                 formattedSymbol += '.NS';
@@ -90,34 +91,93 @@ const EditAsset = () => {
         }
     };
 
-    if (queryLoading) return <div className="p-4 dark:text-gray-300">Loading asset...</div>;
-    if (!asset) return <div className="p-4 text-red-500">Asset not found</div>;
+    if (queryLoading) return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="text-slate-400 font-bold animate-pulse">Syncing Asset Data...</p>
+        </div>
+    );
+
+    if (!asset) return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <p className="text-rose-500 font-black text-xl tracking-tighter">DATA LINK SEVERED: ASSET NOT FOUND</p>
+        </div>
+    );
 
     return (
-        <div className="max-w-lg mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Edit Asset</h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-4 transition-colors">
-
+        <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-400 hover:text-white transition-all shadow-xl"
+                >
+                    <ChevronLeft size={24} />
+                </button>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset Type</label>
-                    <select
-                        {...register('type', { required: true })}
-                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">Select Type</option>
-                        <option value="CRYPTO">Crypto</option>
-                        <option value="STOCK">Stock (NSE)</option>
-                        <option value="MUTUAL_FUND">Mutual Fund</option>
-                        <option value="GOLD">Gold</option>
-                        <option value="SILVER">Silver</option>
-                        <option value="CASH">Cash</option>
-                    </select>
+                    <h2 className="heading-2">Edit Investment</h2>
+                    <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Modification Phase: {asset.name}</p>
+                </div>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+                {/* Section 1: Classification */}
+                <div className="glass-card p-8 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                            <LayoutGrid size={18} />
+                        </div>
+                        <h3 className="text-lg font-black text-white tracking-tight">Classification</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Asset Category</label>
+                            <select
+                                {...register('type', { required: true })}
+                                className="input-field appearance-none cursor-pointer bg-slate-900 border-white/10"
+                            >
+                                <option value="">Select Category</option>
+                                <option value="CRYPTO">Digital Currency (Crypto)</option>
+                                <option value="STOCK">Equity (NSE Stocks)</option>
+                                <option value="MUTUAL_FUND">Mutual Fund (Direct/Regular)</option>
+                                <option value="GOLD">Commodity (Gold)</option>
+                                <option value="SILVER">Commodity (Silver)</option>
+                                <option value="CASH">Fiat Currency (Cash/Bank)</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Platform / Broker</label>
+                            <input
+                                {...register('platform')}
+                                list="platforms"
+                                placeholder="e.g. Zerodha, Binance, Bank"
+                                className="input-field"
+                            />
+                            <datalist id="platforms">
+                                <option value="Binance" />
+                                <option value="Zerodha" />
+                                <option value="Bank" />
+                                <option value="Wallet" />
+                                <option value="Groww" />
+                            </datalist>
+                        </div>
+                    </div>
                 </div>
 
-                {selectedType === 'MUTUAL_FUND' && (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search Mutual Fund</label>
+                {/* Section 2: Asset Details */}
+                <div className="glass-card p-8 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                            <Briefcase size={18} />
+                        </div>
+                        <h3 className="text-lg font-black text-white tracking-tight">Active Parameters</h3>
+                    </div>
+
+                    {selectedType === 'MUTUAL_FUND' && (
+                        <div className="p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
+                            <label className="text-xs font-black uppercase tracking-widest text-blue-400 mb-3 block">Global Fund Registry</label>
                             <MFSearch
                                 onSelect={(mf) => {
                                     setValue('name', mf.schemeName);
@@ -126,154 +186,121 @@ const EditAsset = () => {
                                 placeholder={asset.type === 'MUTUAL_FUND' ? asset.name : "Search new Mutual Fund..."}
                             />
                         </div>
-                    </div>
-                )}
+                    )}
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                    <input
-                        {...register('name', { required: "Name is required" })}
-                        placeholder="e.g. Bitcoin, Reliance"
-                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {errors.name && <span className="text-red-500 text-sm">{errors.name.message}</span>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Asset Designation</label>
+                            <input
+                                {...register('name', { required: "Name is required" })}
+                                placeholder="Investment name"
+                                className="input-field"
+                            />
+                            {errors.name && <span className="text-rose-500 text-[10px] font-bold uppercase tracking-widest">{errors.name.message}</span>}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Symbolic Identifier</label>
+                            <input
+                                {...register('symbol', { required: selectedType === 'MUTUAL_FUND' })}
+                                readOnly={selectedType === 'MUTUAL_FUND'}
+                                placeholder="Identifier"
+                                className={clsx("input-field", selectedType === 'MUTUAL_FUND' && "opacity-50")}
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account / Platform</label>
-                    <input
-                        {...register('platform')}
-                        list="platforms"
-                        placeholder="e.g. Binance, Bank, Zerodha"
-                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <datalist id="platforms">
-                        <option value="Binance" />
-                        <option value="Zerodha" />
-                        <option value="Bank" />
-                        <option value="Wallet" />
-                        <option value="Cash" />
-                        <option value="Groww" />
-                        <option value="KuCoin" />
-                    </datalist>
-                </div>
-
-                {selectedType === 'CRYPTO' && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Binance Symbol (e.g. BTC)
-                        </label>
-                        <input
-                            {...register('symbol')}
-                            placeholder="BTC"
-                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                            Enter Binance base symbol (BTC, ETH, SOL, USDT). Live prices are fetched automatically.
-                        </p>
+                {/* Section 3: Financials */}
+                <div className="glass-card p-8 space-y-6">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                            <TrendingUp size={18} />
+                        </div>
+                        <h3 className="text-lg font-black text-white tracking-tight">Financial Matrix</h3>
                     </div>
-                )}
 
-                {selectedType === 'STOCK' && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Yahoo Symbol (e.g. RELIANCE)
-                        </label>
-                        <input
-                            {...register('symbol')}
-                            placeholder="RELIANCE"
-                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                            Just enter the name, we'll auto-add .NS for NSE stocks.
-                        </p>
-                    </div>
-                )}
-
-                {selectedType === 'MUTUAL_FUND' && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scheme Code</label>
-                        <input
-                            {...register('symbol', { required: "Scheme code is required" })}
-                            readOnly
-                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-400 dark:text-gray-500 focus:outline-none"
-                        />
-                    </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Quantity{['GOLD', 'SILVER'].includes(selectedType) ? ' (grams)' : ''}
-                        </label>
-                        <div className="relative">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">
+                                Holding Units {['GOLD', 'SILVER'].includes(selectedType) ? '(g)' : ''}
+                            </label>
                             <input
                                 type="number" step="any"
                                 {...register('quantity', { required: true })}
                                 disabled={selectedType === 'CASH'}
-                                className={`w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${selectedType === 'CASH' ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : 'bg-gray-50 dark:bg-gray-700'} ${['GOLD', 'SILVER'].includes(selectedType) ? 'pr-8' : ''}`}
+                                className={clsx("input-field", selectedType === 'CASH' && "opacity-50")}
+                                placeholder="0.00"
                             />
-                            {['GOLD', 'SILVER'].includes(selectedType) && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">g</span>
-                            )}
-                        </div>
-                        {selectedType === 'CASH' && <p className="text-xs text-blue-500 mt-1">Cash value uses Invested Amount directly.</p>}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invested Amount (₹)</label>
-                        <input
-                            type="number" step="any"
-                            {...register('investedAmount', { required: true })}
-                            className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Date</label>
-                    <input
-                        type="date"
-                        {...register('date')}
-                        className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">When did you buy this asset? Updating this will recalculate your portfolio history.</p>
-                </div>
-
-                {(['STOCK', 'GOLD', 'SILVER'].includes(selectedType)) && (
-                    <div className="space-y-4">
-                        <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
-                            <h4 className="text-sm font-bold text-amber-800 dark:text-amber-400 mb-1">
-                                {['GOLD', 'SILVER'].includes(selectedType) ? 'Manual Valuation' : 'Price Override'}
-                            </h4>
-                            <p className="text-xs text-amber-700/70 dark:text-amber-500/70">
-                                {selectedType === 'GOLD' && 'Enter the current market price for 1 gram of Gold.'}
-                                {selectedType === 'SILVER' && 'Enter the current market price for 1 KG of Silver.'}
-                                {selectedType === 'STOCK' && 'Optional: Enter a price per unit to override the live Yahoo Finance data.'}
-                            </p>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {selectedType === 'GOLD' ? 'Current Price per Gram (₹)' :
-                                    selectedType === 'SILVER' ? 'Current Price per KG (₹)' :
-                                        'Manual Price Per Unit (₹)'}
-                            </label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Historical Principle</label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                                <input
+                                    type="number" step="any"
+                                    {...register('investedAmount', { required: true })}
+                                    className="input-field pl-8"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Origination Date</label>
                             <input
-                                type="number" step="any"
-                                {...register('manualPrice', { required: ['GOLD', 'SILVER'].includes(selectedType) })}
-                                placeholder={selectedType === 'GOLD' ? "e.g. 7500" : selectedType === 'SILVER' ? "e.g. 85000" : "Optional: Enter price per unit"}
-                                className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                type="date"
+                                {...register('date')}
+                                className="input-field"
                             />
                         </div>
                     </div>
-                )}
 
-                <div className="flex gap-4 pt-4">
-                    <button type="button" onClick={() => navigate(-1)} className="flex-1 py-3 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
-                        Cancel
+                    {(['STOCK', 'GOLD', 'SILVER'].includes(selectedType)) && (
+                        <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                            <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl flex gap-3">
+                                <Info size={20} className="text-amber-400 shrink-0" />
+                                <p className="text-xs text-amber-200/60 font-medium">
+                                    Manual overrides will decouple this asset from global pricing servers. Proceed with caution.
+                                </p>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">
+                                    Manual Override Price (₹)
+                                </label>
+                                <input
+                                    type="number" step="any"
+                                    {...register('manualPrice', { required: ['GOLD', 'SILVER'].includes(selectedType) })}
+                                    placeholder="Price per unit"
+                                    className="input-field border-amber-500/20 focus:ring-amber-500/50"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Submit Actions */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="btn-secondary flex-1 order-2 sm:order-1"
+                    >
+                        Abort Modification
                     </button>
-                    <button type="submit" disabled={loading} className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 dark:shadow-none">
-                        {loading ? 'Saving...' : 'Update Asset'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="btn-primary flex-1 flex items-center justify-center gap-3 order-1 sm:order-2"
+                    >
+                        {loading ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                            <Save size={20} />
+                        )}
+                        <span>{loading ? 'Committing...' : 'Commit Changes'}</span>
                     </button>
                 </div>
             </form>

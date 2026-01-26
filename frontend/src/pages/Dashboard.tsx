@@ -1,19 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { Asset } from '../types';
-import { RefreshCcw, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react';
+import { RefreshCcw, TrendingUp, TrendingDown, DollarSign, Wallet, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import clsx from 'clsx';
 import { useCurrency } from '../context/CurrencyContext';
-import { useEffect } from 'react';
-
-interface StatCardProps {
-    title: string;
-    value: string;
-    icon: any;
-    colorClass: string;
-    subValue?: string;
-    isProfit?: boolean;
-}
+import { useEffect, useState } from 'react';
 
 import AllocationChart from '../components/AllocationChart';
 import PortfolioHistoryChart from '../components/PortfolioHistoryChart';
@@ -25,7 +16,16 @@ import RestoreBackupModal from '../components/RestoreBackupModal';
 import InsightsCard from '../components/InsightsCard';
 import { generateInsights } from '../services/insightsService';
 import { Database } from 'lucide-react';
-import { useState } from 'react';
+
+interface StatCardProps {
+    title: string;
+    value: string;
+    icon: any;
+    gradient: string;
+    accentColor: string;
+    subValue?: string;
+    isProfit?: boolean;
+}
 
 const Dashboard = () => {
     const queryClient = useQueryClient();
@@ -62,103 +62,155 @@ const Dashboard = () => {
         }
     });
 
-    if (isLoading) return <div className="p-4">Loading stats...</div>;
-    if (isError) return <div className="p-4 text-red-500">Error loading data.</div>;
+    if (isLoading) return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="text-slate-400 font-bold animate-pulse">Initializing Dashboard...</p>
+        </div>
+    );
 
-    // Calculations
+    if (isError) return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="bg-red-500/10 p-6 rounded-3xl border border-red-500/20 mb-4">
+                <p className="text-red-500 font-bold text-lg">System Error</p>
+                <p className="text-red-400/60 text-sm">Failed to establish connection with the node.</p>
+            </div>
+        </div>
+    );
+
     const totalInvested = assets.reduce((sum: number, a: Asset) => sum + (a.totalInvested || a.investedAmount || 0), 0);
     const currentNetWorth = assets.reduce((sum: number, a: Asset) => sum + (a.currentValue || 0), 0);
     const totalProfit = assets.reduce((sum: number, a: Asset) => sum + (a.totalPnl || a.profit || 0), 0);
     const isProfit = totalProfit >= 0;
 
-
-
     const insights = generateInsights(assets, history);
 
-    const StatCard = ({ title, value, icon: Icon, colorClass, subValue, isProfit }: StatCardProps) => (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] dark:shadow-none border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between h-36 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
-            <div className="z-10">
-                <p className="text-gray-400 dark:text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">{title}</p>
-                <h3 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{value}</h3>
+    const StatCard = ({ title, value, icon: Icon, gradient, accentColor, subValue, isProfit }: StatCardProps) => (
+        <div className="glass-card glass-card-hover p-6 min-h-[160px] relative overflow-hidden group">
+            {/* Background Gradient Glow */}
+            <div className={clsx("absolute -top-12 -right-12 w-32 h-32 blur-[60px] opacity-20 transition-all duration-500 group-hover:opacity-40", accentColor)}></div>
+
+            <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{title}</span>
+                        <div className={clsx("p-2 rounded-xl bg-gradient-to-br shadow-lg", gradient)}>
+                            <Icon size={16} className="text-white" />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-black text-white tracking-tighter sm:text-3xl">{value}</h3>
+                </div>
+
                 {subValue && (
-                    <div className="flex items-center gap-1 mt-2">
-                        <span className={clsx("text-sm font-bold flex items-center px-1.5 py-0.5 rounded-md",
-                            isProfit
-                                ? "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20"
-                                : "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20"
+                    <div className="flex items-center gap-2 mt-4">
+                        <span className={clsx(
+                            "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black tracking-tight",
+                            isProfit ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
                         )}>
-                            {isProfit ? <TrendingUp size={14} className="mr-1" /> : <TrendingDown size={14} className="mr-1" />}
+                            {isProfit ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                             {subValue}
                         </span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Growth</span>
                     </div>
                 )}
             </div>
-            <div className={clsx("absolute -bottom-6 -right-6 p-6 rounded-full opacity-5 dark:opacity-[0.03] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12", colorClass)}>
-                <Icon size={100} />
-            </div>
-            <div className={clsx("absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/20 to-transparent opacity-50 blur-xl pointer-events-none")}></div>
         </div>
     );
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold dark:text-white">Dashboard</h2>
-                <div className="flex items-center space-x-2">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 className="heading-1 flex items-center gap-3">
+                        Dashboard
+                        <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-widest border border-blue-500/20">Alpha</span>
+                    </h2>
+                    <p className="text-slate-400 font-medium">Monitoring {assets.length} active assets across your portfolio.</p>
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
                         onClick={() => setIsRestoreOpen(true)}
-                        className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        className="btn-secondary flex-1 sm:flex-none flex items-center justify-center gap-2"
                         title="Restore Backup"
                     >
                         <Database size={16} />
-                        <span className="hidden sm:inline">Restore</span>
+                        <span>Restore</span>
                     </button>
-                    <ExportBackupButton />
+
                     <button
                         onClick={() => refreshMutation.mutate()}
                         disabled={refreshMutation.isPending}
-                        className="flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors disabled:opacity-50"
+                        className="btn-primary flex-1 sm:flex-none flex items-center justify-center gap-2"
                     >
                         <RefreshCcw size={16} className={clsx(refreshMutation.isPending && "animate-spin")} />
-                        <span>{refreshMutation.isPending ? 'Syncing...' : 'Refresh'}</span>
+                        <span>{refreshMutation.isPending ? 'Syncing...' : 'Sync Prices'}</span>
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPI Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
-                    title="Net Worth"
+                    title="Total Value"
                     value={formatValue(currentNetWorth)}
                     icon={Wallet}
-                    colorClass="bg-blue-500"
+                    gradient="from-blue-600 to-indigo-600"
+                    accentColor="bg-blue-500"
                 />
                 <TodayGainLossCard />
                 <StatCard
-                    title="Total Invested"
+                    title="Principle"
                     value={formatValue(totalInvested)}
                     icon={DollarSign}
-                    colorClass="bg-purple-500"
+                    gradient="from-purple-600 to-pink-600"
+                    accentColor="bg-purple-500"
                 />
                 <StatCard
-                    title="Total Profit/Loss"
+                    title="Performance"
                     value={formatValue(Math.abs(totalProfit))}
                     subValue={`${isProfit ? '+' : '-'}${((Math.abs(totalProfit) / totalInvested) * 100 || 0).toFixed(2)}%`}
-                    icon={isProfit ? TrendingUp : TrendingDown}
+                    icon={Zap}
                     isProfit={isProfit}
-                    colorClass={isProfit ? "bg-green-500" : "bg-red-500"}
+                    gradient={isProfit ? "from-emerald-500 to-teal-500" : "from-rose-500 to-orange-500"}
+                    accentColor={isProfit ? "bg-emerald-500" : "bg-rose-500"}
                 />
             </div>
 
-            <InsightsCard insights={insights} />
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 gap-8">
+                {/* Insights Section */}
+                <InsightsCard insights={insights} />
 
-            <PortfolioHistoryChart />
+                {/* Main Charts */}
+                <div className="glass-card p-8">
+                    <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-xl font-black text-white tracking-tight">Net Worth History</h3>
+                        <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl">
+                            <span className="px-3 py-1 text-[10px] font-black uppercase text-blue-400 bg-blue-500/10 rounded-lg">Realtime</span>
+                        </div>
+                    </div>
+                    <PortfolioHistoryChart />
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AccountBreakdown assets={assets} />
-                <TopMovers assets={assets} />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="glass-card p-8 h-full">
+                        <AccountBreakdown assets={assets} />
+                    </div>
+                    <div className="glass-card p-8 h-full">
+                        <TopMovers assets={assets} />
+                    </div>
+                </div>
+
+                <div className="glass-card p-8">
+                    <AllocationChart assets={assets} />
+                </div>
             </div>
 
-            <AllocationChart assets={assets} />
+            <div className="flex justify-center pt-8">
+                <ExportBackupButton />
+            </div>
 
             <RestoreBackupModal
                 isOpen={isRestoreOpen}

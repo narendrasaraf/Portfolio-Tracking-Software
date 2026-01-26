@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { AssetTransaction } from '../types';
 import { format } from 'date-fns';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Clock, History as HistoryIcon } from 'lucide-react';
 import clsx from 'clsx';
 import { useCurrency } from '../context/CurrencyContext';
 import { useEffect } from 'react';
@@ -24,93 +24,101 @@ const History = () => {
         }
     }, [historyData, setConversionRate]);
 
-    const transactions = historyData?.transactions || [];
+    const transactions = [...(historyData?.transactions || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    if (isLoading) return <div className="p-4 dark:text-gray-300">Loading history...</div>;
+    if (isLoading) return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="text-slate-400 font-bold animate-pulse">Retrieving Chronicles...</p>
+        </div>
+    );
 
     const TransactionItem = ({ tx }: { tx: AssetTransaction }) => {
         const isSell = tx.type === 'SELL';
         const isBuy = tx.type === 'BUY';
-
-        // Profit is now derived in realizedProfit if available (from SELL transactions)
         const profit = tx.realizedProfit || 0;
         const isProfit = profit >= 0;
 
         return (
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col gap-2 transition-colors">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
+            <div className="glass-card hover:bg-white/[0.03] p-6 transition-all group border-white/5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
                         <div className={clsx(
-                            "p-2 rounded-lg",
-                            isBuy && "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400",
-                            isSell && "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                            "p-3.5 rounded-2xl shadow-xl transition-transform group-hover:scale-110",
+                            isBuy && "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+                            isSell && "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                         )}>
-                            {isBuy && <ArrowUpRight size={20} />}
-                            {isSell && <ArrowDownRight size={20} />}
+                            {isBuy && <ArrowUpRight size={24} />}
+                            {isSell && <ArrowDownRight size={24} />}
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900 dark:text-gray-100">{tx.asset?.name || 'Unknown Asset'}</h3>
-                            <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-black text-white tracking-tight">{tx.asset?.name || 'Deactivated Asset'}</h3>
+                            <div className="flex items-center gap-3 mt-1">
                                 <span className={clsx(
-                                    "text-[10px] font-bold uppercase px-1.5 py-0.5 rounded",
-                                    isBuy && "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
-                                    isSell && "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+                                    "text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border",
+                                    isBuy && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+                                    isSell && "bg-rose-500/10 text-rose-400 border-rose-500/20"
                                 )}>
-                                    {tx.type}
+                                    Operation: {tx.type}
                                 </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {format(new Date(tx.date), 'dd MMM yyyy, hh:mm a')}
+                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-widest">
+                                    <Clock size={12} />
+                                    {format(new Date(tx.date), 'dd MMM yyyy • HH:mm')}
                                 </span>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                    <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Quantity</p>
-                        <p className="font-semibold text-sm dark:text-gray-200">{tx.quantity} {tx.asset?.symbol || ''}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Price/Value</p>
-                        <p className="font-semibold text-sm dark:text-gray-200">{formatValue(tx.pricePerUnit)}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] text-gray-400 uppercase tracking-wider">Total Value</p>
-                        <p className="font-semibold text-sm dark:text-gray-200">{formatValue(tx.quantity * tx.pricePerUnit)}</p>
-                    </div>
-                    {isSell && (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:text-right">
                         <div>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Realized P/L</p>
-                            <div className={clsx("flex items-center gap-1 font-bold text-sm", isProfit ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400")}>
-                                {isProfit ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                                <span>{formatValue(Math.abs(profit))}</span>
-                            </div>
+                            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Volume</p>
+                            <p className="font-bold text-sm text-white">{tx.quantity} <span className="text-slate-500 text-[10px]">{tx.asset?.symbol || ''}</span></p>
                         </div>
-                    )}
+                        <div>
+                            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Unit Price</p>
+                            <p className="font-bold text-sm text-white">{formatValue(tx.pricePerUnit)}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Net Flow</p>
+                            <p className="font-bold text-sm text-white">{formatValue(tx.quantity * tx.pricePerUnit)}</p>
+                        </div>
+                        {isSell && (
+                            <div>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-1">Yield Delta</p>
+                                <div className={clsx("flex items-center md:justify-end gap-1 font-black text-sm", isProfit ? "text-emerald-400" : "text-rose-400")}>
+                                    {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                    <span>{formatValue(Math.abs(profit))}</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         );
     };
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Transaction History</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{transactions.length} total events</p>
-                </div>
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+            <div>
+                <h2 className="heading-1">Portfolio Chronicles</h2>
+                <p className="text-slate-400 font-medium">Visualizing every strategic entry and exit in your investment timeline.</p>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-6">
                 {transactions.map(tx => (
                     <TransactionItem key={tx.id} tx={tx} />
                 ))}
             </div>
 
             {transactions.length === 0 && (
-                <div className="text-center py-10 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-2xl border border-dashed dark:border-gray-700">
-                    No transactions found yet. Try adding or selling assets!
+                <div className="flex flex-col items-center justify-center py-32 glass-card border-dashed">
+                    <div className="p-8 bg-white/5 rounded-full mb-6 border border-white/10 opacity-20">
+                        <HistoryIcon size={48} className="text-slate-500" />
+                    </div>
+                    <p className="text-2xl font-black text-white mb-2 tracking-tight tracking-tight">Timeline: Linear Null</p>
+                    <p className="text-slate-400 font-medium text-center max-w-sm">
+                        No transactions detected in the local ledger. Initialize a holding to record first entry.
+                    </p>
                 </div>
             )}
         </div>
