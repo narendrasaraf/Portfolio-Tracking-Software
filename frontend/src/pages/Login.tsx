@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1611974717482-58a00f244a3d?auto=format&fit=crop&q=80&w=2670';
 
 const Login = () => {

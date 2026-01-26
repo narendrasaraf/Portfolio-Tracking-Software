@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 interface User {
     id: string;
@@ -27,7 +27,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuth = async () => {
         try {
             // Include credentials (cookies) in the request
-            const response = await axios.get(`${API_URL}/auth/me`, { withCredentials: true });
+            const token = localStorage.getItem('token');
+            const headers: any = { withCredentials: true };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            const response = await axios.get(`${API_URL}/auth/me`, { headers });
             setUser(response.data);
             setIsAuthenticated(true);
         } catch (err) {
