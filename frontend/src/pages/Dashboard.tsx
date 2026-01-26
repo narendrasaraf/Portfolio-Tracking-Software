@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
 import { Asset } from '../types';
-import { RefreshCcw, TrendingUp, TrendingDown, DollarSign, Wallet, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import { RefreshCcw, DollarSign, Wallet, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import clsx from 'clsx';
 import { useCurrency } from '../context/CurrencyContext';
 import { useEffect, useState } from 'react';

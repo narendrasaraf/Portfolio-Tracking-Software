@@ -4,7 +4,7 @@ import api from '../services/api';
 import { AssetType } from '../types';
 import { useState, useEffect } from 'react';
 import MFSearch from '../components/MFSearch';
-import { ChevronLeft, Save, Info, Briefcase, TrendingUp, Calendar, LayoutGrid } from 'lucide-react';
+import { ChevronLeft, Save, Info, Briefcase, TrendingUp, LayoutGrid } from 'lucide-react';
 import clsx from 'clsx';
 
 type FormValues = {

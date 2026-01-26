@@ -12,7 +12,9 @@ const PasswordGate = () => {
         try {
             const response = await api.post('/auth/login', { password });
             if (response.data.success) {
-                login();
+                // The login function now expects token and user object, but PasswordGate implies a simpler auth flow.
+                // We'll pass dummy or response data to satisfy the signature.
+                login(response.data.token, response.data.user);
             }
         } catch (err) {
             setError('Incorrect password');
