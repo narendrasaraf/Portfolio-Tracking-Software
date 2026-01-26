@@ -16,6 +16,7 @@ import authRoutes from './routes/authRoutes';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (critical for Render/Heroku HTTPS)
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
