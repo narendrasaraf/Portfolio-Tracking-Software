@@ -21,7 +21,7 @@ export const getAssets = async (req: Request, res: Response) => {
 
             const priceInfo = prices[priceKey];
             let currentPrice = asset.manualPrice || 0;
-            let prevPrice = null;
+            let prevPrice: number | null = null;
 
             if (priceInfo && !isMetal) {
                 currentPrice = priceInfo.current;
