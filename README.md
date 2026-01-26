@@ -46,15 +46,6 @@ npm run dev
 ```
 Frontend runs on `http://localhost:5173`
 
-## 🚀 Deployment
-
-The project is optimized for a split deployment:
-- **Backend**: Recommended for **Render.com** (config included in `render.yaml`).
-- **Frontend**: Recommended for **Vercel** or **Render**.
-- **Database**: **MongoDB Atlas** (Free Tier).
-
-For detailed production setup including Google OAuth and database whitelisting, please refer to:
-👉 **[DEPLOYMENT.md](./DEPLOYMENT.md)**
 
 ## 🔄 Live Price Engine
 
