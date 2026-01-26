@@ -120,7 +120,7 @@ export const refreshPrices = async (force: boolean = false) => {
                 const existing = cacheMap.get(key);
                 await (prisma as any).priceCache.upsert({
                     where: { key },
-                    update: { priceInInr, prevPriceInInr: existing?.priceInInr },
+                    update: { priceInInr, prevPriceInInr: (existing as any)?.priceInInr },
                     create: { key, type: 'CRYPTO', symbol, priceInInr }
                 });
             }
@@ -148,7 +148,7 @@ export const refreshPrices = async (force: boolean = false) => {
                 const existing = cacheMap.get(key);
                 await (prisma as any).priceCache.upsert({
                     where: { key },
-                    update: { priceInInr, prevPriceInInr: existing?.priceInInr },
+                    update: { priceInInr, prevPriceInInr: (existing as any)?.priceInInr },
                     create: { key, type: 'STOCK', symbol, priceInInr }
                 });
             }
@@ -165,7 +165,7 @@ export const refreshPrices = async (force: boolean = false) => {
                 const existing = cacheMap.get(key);
                 await (prisma as any).priceCache.upsert({
                     where: { key },
-                    update: { priceInInr: nav, prevPriceInInr: existing?.priceInInr },
+                    update: { priceInInr: nav, prevPriceInInr: (existing as any)?.priceInInr },
                     create: { key, type: 'MUTUAL_FUND', symbol: scheme, priceInInr: nav }
                 });
             }
