@@ -1,95 +1,80 @@
-# Personal Portfolio Tracker
+# WealthFlow: Personal Portfolio Tracker 🚀
 
-A simple, password-protected personal finance portfolio tracker with **embedded database** - no external database hosting required!
-
-## 🔐 Single-User App
-
-- **Password**: #To be update later#
-- No user registration required
-- Session-based access
+A premium, full-stack personal finance and portfolio tracking application designed for modern investors. Track your stocks, crypto, mutual funds, and precious metals in one unified, sleek dashboard with live price updates and historical analytics.
 
 ## ✨ Features
 
-- ✅ **Embedded SQLite Database** - No PostgreSQL or Docker needed!
-- ✅ Password-protected (personal use only)
-- ✅ Track multiple asset types (Crypto, Stocks, MF, Gold, Silver, Cash)
-- ✅ Live price fetching for Crypto (CoinGecko) and Mutual Funds (MFAPI)
-- ✅ Manual price entry for Stocks, Gold, Silver
-- ✅ Add, Edit, Delete assets
-- ✅ Real-time profit/loss calculation
-- ✅ Mobile-first responsive design
+- 🔐 **Multi-User Secure Authentication**: Full registration and JWT-based login system for private portfolio management.
+- 📈 **Dynamic Analytics**: Real-time Daily Gain/Loss (Yesterday vs Today) tracking and historical net worth chronicles.
+- 🌍 **Multi-Asset Support**:
+  - **Crypto**: Live prices via Binance API (USDT-INR adjusted).
+  - **Indian Stocks**: Live quotes via Yahoo Finance.
+  - **Mutual Funds**: Latest NAV tracking via MFAPI.
+  - **Precious Metals**: Specialized handling for Gold and Silver (Price per Gram/KG).
+  - **Cash & Savings**: Direct entry for bank balances.
+- 💎 **Premium UI/UX**: Modern, glassmorphic design system with sleek dark mode, micro-animations, and responsive layouts for mobile & desktop.
+- ⚡ **Performance**: Optimized backend with in-memory caching for live prices and strategic snapshotting.
 
-## Tech Stack
-- **Frontend**: React, Vite, TypeScript, TailwindCSS
-- **Backend**: Node.js, Express, TypeScript, Prisma
-- **Database**: SQLite (embedded - travels with your app!)
+## 🔥 Tech Stack
 
-## Prerequisites
+- **Frontend**: React 18, Vite, TypeScript, TailwindCSS, Recharts, Lucide React.
+- **Backend**: Node.js, Express, TypeScript, Mongoose (with Prisma-like shim).
+- **Database**: MongoDB (Atlas) for high scalability and flexible data structures.
+- **Styling**: Modern CSS with Glassmorphism and specialized typography.
+
+## 🛠️ Local Setup
+
+### 1. Prerequisites
 - Node.js (v18+)
+- MongoDB (Local instance or Atlas connection string)
 
-## Setup Instructions
-
-### 1. Backend Setup
+### 2. Backend Installation
 ```bash
 cd backend
 npm install
-npx prisma db push
+# Create a .env file based on the Deployment Guide
 npm run dev
 ```
 Backend runs on `http://localhost:3000`
 
-### 2. Frontend Setup
+### 3. Frontend Installation
 ```bash
 cd frontend
 npm install
+# Ensure .env has VITE_API_URL=http://localhost:3000/api
 npm run dev
 ```
 Frontend runs on `http://localhost:5173`
 
-## 🔄 Live Price APIs
+## 🚀 Deployment
 
-Your portfolio tracker uses the following APIs for live prices:
+The project is optimized for a split deployment:
+- **Backend**: Recommended for **Render.com** (config included in `render.yaml`).
+- **Frontend**: Recommended for **Vercel** or **Render**.
+- **Database**: **MongoDB Atlas** (Free Tier).
 
-1. **Crypto**: [CoinGecko API](https://www.coingecko.com/en/api)
-   - **Key needed?**: ❌ No (Uses free public tier)
-   - **How it works**: Uses the "API ID" (e.g., `bitcoin`, `ethereum`) to fetch current INR prices.
+For detailed production setup including Google OAuth and database whitelisting, please refer to:
+👉 **[DEPLOYMENT.md](./DEPLOYMENT.md)**
 
-2. **Mutual Funds**: [MFAPI.in](https://www.mfapi.in/)
-   - **Key needed?**: ❌ No (Completely free API for Indian Mutual Funds)
-   - **How it works**: Uses the "Scheme Code" (e.g., `120503`) to fetch the latest NAV.
+## 🔄 Live Price Engine
 
-3. **Stocks / Gold / Silver**: **Manual Entry**
-   - **Key needed?**: ❌ No
-   - **How it works**: You enter the price manually. If you want to automate this, you can integrate services like **Alpha Vantage** or **Twelve Data**.
-
-### 🔑 How to add API Keys (Optional)
-
-If you decide to upgrade to a paid API tier (like CoinGecko Pro) or add a Stocks API:
-
-1. Open `backend/.env`
-2. Add your key: `STOCK_API_KEY=your_key_here`
-3. Update `backend/src/services/priceService.ts` to use this key in the headers.
+1. **Binance Engine**: Automatically fetches USDT-INR rates to provide accurate crypto valuations in local currency.
+2. **Yahoo Finance Engine**: Real-time stock quotes for Indian equities.
+3. **MFAPI Connector**: Retrieves the most recent NAV for mutual fund schemes using 6-digit scheme codes.
 
 ---
 
-## 💾 Database Location
+## 💾 Security & Privacy
 
-Your data is stored in `backend/prisma/dev.db` - this is a simple SQLite file that you can:
-- ✅ Back up by copying the file
-- ✅ Move to another computer
-- ✅ Keep private and secure
+- **Data Privacy**: Your financial data is securely stored in your private MongoDB instance.
+- **Secrets Management**: Sensitive keys are managed via `.env` and are protected from Git exposure via robust `.gitignore` rules.
+- **Encryption**: Passwords are hashed using `bcrypt` and sessions are protected by `JWT`.
 
-## Deployment Ready
+---
 
-This app is perfect for:
-- Firebase Hosting (frontend + backend functions)
-- Vercel/Netlify
-- Any static host + serverless functions
-- The SQLite database travels with your deployment!
+## 📝 Maintenance
+- **Snapshots**: Daily snapshots are automatically generated to build your historical growth chart.
+- **Health Check**: Hit `/health` to verify backend status.
+- **Manual Refresh**: Trigger a global price sync via the Settings panel in the UI.
 
-## Notes
-
-- **Security**: Simple password protection suitable for personal use
-- **Backup**: Regularly backup `backend/prisma/dev.db` to preserve your data
-- **Portability**: The entire app + database can be zipped and moved anywhere
-# Portfolio-Tracking-Software
+Designed with ❤️ for modern investors.

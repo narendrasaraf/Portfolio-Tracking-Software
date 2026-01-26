@@ -33,8 +33,8 @@ const syncMissingSnapshots = () => __awaiter(void 0, void 0, void 0, function* (
             const dateStr = currentDate.toISOString().split('T')[0];
             let totalNetWorth = 0;
             let totalInvested = 0;
-            assets.forEach(asset => {
-                const txUpToDate = asset.transactions.filter(tx => {
+            assets.forEach((asset) => {
+                const txUpToDate = asset.transactions.filter((tx) => {
                     const txDate = new Date(tx.date);
                     txDate.setHours(0, 0, 0, 0);
                     return txDate <= currentDate;
@@ -92,7 +92,7 @@ const createDailySnapshot = () => __awaiter(void 0, void 0, void 0, function* ()
         const prices = yield (0, priceService_1.getPriceCache)();
         let totalNetWorth = 0;
         let totalInvested = 0;
-        assets.forEach(asset => {
+        assets.forEach((asset) => {
             const priceKey = `${asset.type}:${asset.symbol}`;
             let currentPrice = asset.manualPrice || 0;
             const priceInfo = prices[priceKey];
@@ -172,48 +172,51 @@ exports.getHistory = getHistory;
 const getDailyChange = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const today = new Date().toISOString().split('T')[0];
-        // Get yesterday's snapshot
+        // Get exactly yesterday's date string
         const yesterdayDate = new Date();
         yesterdayDate.setDate(yesterdayDate.getDate() - 1);
         const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
-        const [yesterdaySnapshot, todaySnapshot] = yield Promise.all([
-            db_1.prisma.portfolioSnapshot.findFirst({
-                where: { date: { lt: today } },
-                orderBy: { date: 'desc' }
-            }),
-            db_1.prisma.portfolioSnapshot.findUnique({ where: { date: today } })
-        ]);
-        let netWorthTodayInr = (todaySnapshot === null || todaySnapshot === void 0 ? void 0 : todaySnapshot.netWorthInr) || 0;
+        // 1. Get netWorthYesterdayInr from exactly yesterday's snapshot
+        const yesterdaySnapshot = yield db_1.prisma.portfolioSnapshot.findUnique({
+            where: { date: yesterdayStr }
+        });
         const netWorthYesterdayInr = (yesterdaySnapshot === null || yesterdaySnapshot === void 0 ? void 0 : yesterdaySnapshot.netWorthInr) || null;
-        // If today's snapshot is missing, try to calculate it on the fly
-        if (netWorthTodayInr === 0) {
-            const assets = yield db_1.prisma.asset.findMany({
-                include: { transactions: true }
-            });
-            const prices = yield (0, priceService_1.getPriceCache)();
-            assets.forEach(asset => {
-                const priceKey = `${asset.type}:${asset.symbol}`;
-                let currentPrice = asset.manualPrice || 0;
-                const priceInfo = prices[priceKey];
-                if (priceInfo) {
-                    currentPrice = priceInfo.current;
-                }
-                else if (asset.type === 'CASH') {
-                    currentPrice = 1;
-                }
-                const performance = (0, transactionService_1.calculateAssetPerformance)(asset, asset.transactions, currentPrice);
-                netWorthTodayInr += performance.currentValue;
-            });
-        }
+        // 2. Calculate netWorthTodayInr live (current calculated portfolio value)
+        const assets = yield db_1.prisma.asset.findMany({
+            include: { transactions: true }
+        });
+        const prices = yield (0, priceService_1.getPriceCache)();
+        let netWorthTodayInr = 0;
+        assets.forEach((asset) => {
+            const isMetal = asset.type === 'GOLD' || asset.type === 'SILVER';
+            const priceKey = isMetal ? `${asset.type}:LIVE` : `${asset.type}:${asset.symbol}`;
+            const priceInfo = prices[priceKey];
+            let currentPrice = asset.manualPrice || 0;
+            if (priceInfo && !isMetal) {
+                currentPrice = priceInfo.current;
+            }
+            else if (asset.type === 'CASH') {
+                currentPrice = 1;
+            }
+            // Handle Silver manual price (per KG -> per Gram)
+            if (asset.type === 'SILVER' && asset.manualPrice) {
+                currentPrice = asset.manualPrice / 1000;
+            }
+            const performance = (0, transactionService_1.calculateAssetPerformance)(asset, asset.transactions, currentPrice);
+            netWorthTodayInr += performance.currentValue;
+        });
+        // 3. Calculate gain/loss logic
+        // Formula: dailyGainInr = netWorthTodayInr - netWorthYesterdayInr
+        // Formula: dailyGainPercent = (dailyGainInr / netWorthYesterdayInr) * 100
         let dailyChangeInr = null;
         let dailyChangePercent = null;
-        if (netWorthYesterdayInr && netWorthYesterdayInr > 0 && netWorthTodayInr > 0) {
+        if (netWorthYesterdayInr !== null && netWorthYesterdayInr > 0) {
             dailyChangeInr = netWorthTodayInr - netWorthYesterdayInr;
             dailyChangePercent = (dailyChangeInr / netWorthYesterdayInr) * 100;
         }
         res.json({
             today,
-            yesterday: (yesterdaySnapshot === null || yesterdaySnapshot === void 0 ? void 0 : yesterdaySnapshot.date) || yesterdayStr,
+            yesterday: yesterdayStr,
             netWorthTodayInr,
             netWorthYesterdayInr,
             dailyChangeInr,
